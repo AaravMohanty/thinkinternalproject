@@ -1,0 +1,8 @@
+name,role_title,company,major,grad_year,linkedin,email,phone
+Jordan Kim,Software Engineer,Stripe,Computer Science,2024,https://www.linkedin.com/in/jordan-kim,jordan.kim@example.com,(555) 201-0001
+Priya Shah,Data Scientist,Capital One,Data Science,2023,https://www.linkedin.com/in/priya-shah,priya.shah@example.com,(555) 201-0002
+Miguel Torres,Product Manager,Amazon,Industrial Engineering,2022,https://www.linkedin.com/in/miguel-torres,miguel.torres@example.com,(555) 201-0003
+Emily Zhao,Quant Research Analyst,Two Sigma,Mathematics,2021,https://www.linkedin.com/in/emily-zhao,emily.zhao@example.com,(555) 201-0004
+Noah Williams,Security Engineer,Cloudflare,Computer Engineering,2020,https://www.linkedin.com/in/noah-williams,noah.williams@example.com,(555) 201-0005
+Sofia Rossi,UX Designer,Airbnb,User Experience Design,2024,https://www.linkedin.com/in/sofia-rossi,sofia.rossi@example.com,(555) 201-0006
+Thomas Nguyen,Machine Learning Engineer,NVIDIA,Computer Science,2025,https://www.linkedin.com/in/thomas-nguyen,thomas.nguyen@example.com,(555) 201-0007
