@@ -206,16 +206,42 @@ def load_alumni() -> pd.DataFrame:
 def process_linkedin_csv(df: pd.DataFrame):
     """Process LinkedIn CSV format into standard format."""
     # Map the new columns to our internal names
-    df["name"] = df["Name"].fillna("")
-    df["linkedin"] = df["linkedinProfileUrl"].fillna(df["Linkedin"].fillna("")) if "linkedinProfileUrl" in df.columns else df.get("Linkedin", "").fillna("")
+    df["name"] = df["Name"].fillna("") if "Name" in df.columns else ""
+
+    # Handle LinkedIn URL - check both possible column names
+    if "linkedinProfileUrl" in df.columns:
+        df["linkedin"] = df["linkedinProfileUrl"].fillna("")
+    elif "Linkedin" in df.columns:
+        df["linkedin"] = df["Linkedin"].fillna("")
+    else:
+        df["linkedin"] = ""
+
     df["email"] = df["Personal Gmail"].fillna("") if "Personal Gmail" in df.columns else ""
     df["professional_email"] = df["professionalEmail"].fillna("") if "professionalEmail" in df.columns else ""
-    df["grad_year"] = df["Grad Yr"].fillna("").astype(str) if "Grad Yr" in df.columns else ""
+    df["grad_year"] = df["Grad Yr"].fillna("").astype(str).replace("nan", "") if "Grad Yr" in df.columns else ""
     df["major"] = df["Major"].fillna("") if "Major" in df.columns else ""
-    df["role_title"] = df["linkedinJobTitle"].fillna(df["linkedinHeadline"].fillna("")) if "linkedinJobTitle" in df.columns else ""
+
+    # Handle job title - check both columns
+    if "linkedinJobTitle" in df.columns:
+        df["role_title"] = df["linkedinJobTitle"].fillna("")
+        if df["role_title"].str.strip().eq("").all() and "linkedinHeadline" in df.columns:
+            df["role_title"] = df["linkedinHeadline"].fillna("")
+    elif "linkedinHeadline" in df.columns:
+        df["role_title"] = df["linkedinHeadline"].fillna("")
+    else:
+        df["role_title"] = ""
+
     df["company"] = df["companyName"].fillna("") if "companyName" in df.columns else ""
     df["company_industry"] = df["companyIndustry"].fillna("") if "companyIndustry" in df.columns else ""
-    df["location"] = df.get("location", df.get("linkedinJobLocation", "")).fillna("")
+
+    # Handle location - check multiple possible columns
+    if "location" in df.columns:
+        df["location"] = df["location"].fillna("")
+    elif "linkedinJobLocation" in df.columns:
+        df["location"] = df["linkedinJobLocation"].fillna("")
+    else:
+        df["location"] = ""
+
     df["headline"] = df["linkedinHeadline"].fillna("") if "linkedinHeadline" in df.columns else ""
     df["profile_image_url"] = df["linkedinProfileImageUrl"].fillna("") if "linkedinProfileImageUrl" in df.columns else ""
 
@@ -361,22 +387,28 @@ CARD_CSS = """
 
 
 def render_card(row: pd.Series) -> str:
-    initials = "".join([part[0].upper() for part in row["name"].split()[:2]]) or "A"
-    company = row["company"] or "—"
-    role = row["role_title"] or row["headline"] or "—"
-    major = row["major"] or "—"
-    gy = row["grad_year"] if row["grad_year"] and row["grad_year"] != "nan" else "—"
-    linkedin = row["linkedin"]
-    email = row["email"]
-    professional_email = row.get("professional_email", "")
-    location = row.get("location", "")
-    industry = row.get("company_industry", "")
-    profile_image = row.get("profile_image_url", "")
+    # Skip empty rows
+    name = str(row.get("name", "")).strip()
+    if not name:
+        return ""  # Return empty string for blank entries
+
+    initials = "".join([part[0].upper() for part in name.split()[:2] if part]) or "?"
+    company = str(row.get("company", "")).strip() or "—"
+    role = str(row.get("role_title", "")).strip() or str(row.get("headline", "")).strip() or "—"
+    major = str(row.get("major", "")).strip() or "—"
+    gy = str(row.get("grad_year", "")).strip()
+    gy = gy if gy and gy != "nan" and gy != "None" else "—"
+    linkedin = str(row.get("linkedin", "")).strip()
+    email = str(row.get("email", "")).strip()
+    professional_email = str(row.get("professional_email", "")).strip()
+    location = str(row.get("location", "")).strip()
+    industry = str(row.get("company_industry", "")).strip()
+    profile_image = str(row.get("profile_image_url", "")).strip()
 
     # Use profile image if available, otherwise use initials
     avatar_html = f'<div class="avatar">{initials}</div>'
-    if profile_image:
-        avatar_html = f'<img src="{profile_image}" class="avatar" alt="{row["name"]}" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';"/><div class="avatar" style="display:none;">{initials}</div>'
+    if profile_image and profile_image != "nan" and profile_image != "None":
+        avatar_html = f'<img src="{profile_image}" class="avatar" alt="{name}" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';"/><div class="avatar" style="display:none;">{initials}</div>'
 
     links = []
     if linkedin:
@@ -407,7 +439,7 @@ def render_card(row: pd.Series) -> str:
       <div class="card-header">
         {avatar_html}
         <div>
-          <p class="name">{row['name']}</p>
+          <p class="name">{name}</p>
           <p class="role"><strong>{role}</strong></p>
           <p class="role" style="font-size: 14px; margin-top: 2px;">@ {company_display}</p>
         </div>
@@ -415,7 +447,7 @@ def render_card(row: pd.Series) -> str:
       <div class="meta">
         {' '.join(meta_pills)}
       </div>
-      <div class="links">{'&nbsp;&nbsp;•&nbsp;&nbsp;'.join(links)}</div>
+      <div class="links">{'&nbsp;&nbsp;•&nbsp;&nbsp;'.join(links) if links else '<span style="color: #6b7280;">No contact info available</span>'}</div>
     </div>
     """
 
@@ -540,8 +572,13 @@ def main():
     if filtered.empty:
         st.info("No results. Try clearing or loosening your filters.")
     else:
+        # Filter out empty cards
         html_cards = [render_card(row) for _, row in filtered.iterrows()]
-        st.markdown("\n".join(html_cards), unsafe_allow_html=True)
+        html_cards = [card for card in html_cards if card]  # Remove empty strings
+        if html_cards:
+            st.markdown("\n".join(html_cards), unsafe_allow_html=True)
+        else:
+            st.info("No valid alumni data to display.")
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("---")
