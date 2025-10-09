@@ -270,74 +270,91 @@ CARD_CSS = """
   .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-/* Card */
+/* Card - Dark Theme */
 .card {
-  border: 1px solid #d1d5db;
-  border-radius: 12px;
-  padding: 20px;
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  transition: transform .15s ease, box-shadow .15s ease;
+  border: 1px solid #374151;
+  border-radius: 16px;
+  padding: 24px;
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
 }
 .card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
-  border-color: #9ca3af;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.3);
+  border-color: #60a5fa;
 }
 .card-header {
-  display: flex; align-items: center; gap: 14px; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 16px; margin-bottom: 16px;
 }
 .avatar, img.avatar {
-  width: 48px; height: 48px; border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
   color: #ffffff;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 700; letter-spacing: 0.5px; font-size: 16px;
+  font-weight: 700; letter-spacing: 0.5px; font-size: 18px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
   object-fit: cover;
 }
-.name { 
-  font-size: 20px; 
-  font-weight: 700; 
-  margin: 0; 
-  color: #111827;
+.name {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+  color: #f9fafb;
   line-height: 1.2;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
-.role { 
-  margin: 0; 
-  color: #4b5563; 
+.role {
+  margin: 0;
+  color: #d1d5db;
   font-size: 15px;
   font-weight: 500;
 }
 .meta {
-  display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 8px 0; 
-  color: #6b7280; font-size: 13px;
+  display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0 12px 0;
+  color: #9ca3af; font-size: 13px;
 }
 .meta .pill {
-  border: 1px solid #d1d5db; 
-  padding: 4px 12px; 
-  border-radius: 20px; 
-  background: #f9fafb;
-  color: #374151;
+  border: 1px solid #4b5563;
+  padding: 6px 14px;
+  border-radius: 24px;
+  background: rgba(55, 65, 81, 0.5);
+  color: #e5e7eb;
   font-weight: 500;
+  backdrop-filter: blur(8px);
 }
 .links {
-  display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; 
+  display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;
   font-size: 14px;
 }
-.links a { 
-  text-decoration: none; 
-  color: #3b82f6;
-  font-weight: 500;
-  padding: 6px 12px;
-  border-radius: 6px;
-  background: #eff6ff;
-  border: 1px solid #dbeafe;
-  transition: all 0.2s ease;
-}
-.links a:hover { 
-  background: #dbeafe;
-  color: #1d4ed8;
+.links a {
   text-decoration: none;
+  color: #60a5fa;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+.links a:hover {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: #60a5fa;
+  transform: translateY(-2px);
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 </style>
 """
@@ -403,10 +420,14 @@ def render_card(row: pd.Series) -> str:
     """
 
 
-def filter_controls(df: pd.DataFrame) -> Tuple[str, List[str], List[str], List[str], List[str], List[str]]:
+def filter_controls(df: pd.DataFrame) -> Tuple[str, str, List[str], List[str], List[str], List[str], List[str], List[str]]:
     with st.sidebar:
         st.title("🔎 Filters")
         st.caption("Use any combination. Leave blank to show all.")
+
+        # Name search filter
+        q_name = st.text_input("Search by name", placeholder="e.g., John, Smith")
+
         q_title = st.text_input("Job title contains", placeholder="e.g., software, analyst")
         majors = sorted([m for m in df["major"].unique() if m])
         sel_majors = st.multiselect("Major", majors)
@@ -451,11 +472,16 @@ def filter_controls(df: pd.DataFrame) -> Tuple[str, List[str], List[str], List[s
         if st.button("Reset filters"):
             st.rerun()
 
-    return q_title, sel_majors, sel_years, sel_companies, sel_schools, sel_industries
+    return q_name, q_title, sel_majors, sel_years, sel_companies, sel_schools, sel_industries
 
 
-def row_matches(row: pd.Series, q_title: str, sel_majors: List[str], sel_years: List[str],
+def row_matches(row: pd.Series, q_name: str, q_title: str, sel_majors: List[str], sel_years: List[str],
                 sel_companies: List[str], sel_schools: List[str], sel_industries: List[str]) -> bool:
+    # Name search
+    ok_name = True
+    if q_name.strip():
+        ok_name = q_name.lower() in row.get("name", "").lower()
+
     ok_title = True
     if q_title.strip():
         # Search in both job title and headline
@@ -479,7 +505,7 @@ def row_matches(row: pd.Series, q_title: str, sel_majors: List[str], sel_years: 
     # Check industry
     ok_industry = (not sel_industries) or (row.get("company_industry", "") in set(sel_industries))
 
-    return ok_title and ok_major and ok_year and ok_company and ok_school and ok_industry
+    return ok_name and ok_title and ok_major and ok_year and ok_company and ok_school and ok_industry
 
 
 # ----------------------------
@@ -492,9 +518,9 @@ def main():
     st.markdown(CARD_CSS, unsafe_allow_html=True)
 
     df = load_alumni()
-    q_title, sel_majors, sel_years, sel_companies, sel_schools, sel_industries = filter_controls(df)
+    q_name, q_title, sel_majors, sel_years, sel_companies, sel_schools, sel_industries = filter_controls(df)
 
-    filtered = df[df.apply(lambda r: row_matches(r, q_title, sel_majors, sel_years, sel_companies, sel_schools, sel_industries), axis=1)].copy()
+    filtered = df[df.apply(lambda r: row_matches(r, q_name, q_title, sel_majors, sel_years, sel_companies, sel_schools, sel_industries), axis=1)].copy()
 
     # Sorting (handles string columns + numeric grad year via grad_year_int)
     sort_col = st.session_state.get("_sort_col", "name")
