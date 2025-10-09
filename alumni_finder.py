@@ -13,6 +13,8 @@ Run:
 from __future__ import annotations
 import os
 from typing import List, Tuple
+import requests
+from io import StringIO
 
 import pandas as pd
 import streamlit as st
@@ -20,6 +22,16 @@ import streamlit as st
 APP_TITLE = "PurdueTHINK — Alumni Finder"
 DATA_DIR = "data"
 ALUMNI_CSV = os.path.join(DATA_DIR, "alumni.csv")
+
+# Google Drive configuration
+# To get the direct download link:
+# 1. Share the file in Google Drive (Anyone with link can view)
+# 2. Get the file ID from the share link
+# 3. Use this format: https://drive.google.com/uc?export=download&id=FILE_ID
+# Example: if share link is https://drive.google.com/file/d/1ABC123/view
+# Then FILE_ID is 1ABC123
+GOOGLE_DRIVE_FILE_ID = "1-ZPmzBu6xat2qQxOti2vg7ricaAlzkn_"  # Replace with your actual file ID
+GOOGLE_DRIVE_URL = f"https://drive.google.com/uc?export=download&id={GOOGLE_DRIVE_FILE_ID}" if GOOGLE_DRIVE_FILE_ID else None
 
 # ----------------------------
 # Seed data (no personal info)
@@ -103,27 +115,134 @@ SEED = [
 # ----------------------------
 def ensure_data():
     os.makedirs(DATA_DIR, exist_ok=True)
+    # Only create CSV from seed if CSV doesn't exist
     if not os.path.exists(ALUMNI_CSV):
         pd.DataFrame(SEED).to_csv(ALUMNI_CSV, index=False)
 
 
-@st.cache_data(show_spinner=False)
+def parse_multiple_values(value: str, delimiter: str = ",") -> List[str]:
+    """Parse comma-separated or semicolon-separated values."""
+    if pd.isna(value) or value == "":
+        return []
+    # Try different delimiters
+    if ";" in str(value):
+        delimiter = ";"
+    return [v.strip() for v in str(value).split(delimiter) if v.strip()]
+
+
+def download_csv_from_google_drive(url: str) -> pd.DataFrame:
+    """Download CSV from Google Drive and return as DataFrame."""
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        # Parse CSV from the response text
+        csv_data = StringIO(response.text)
+        return pd.read_csv(csv_data)
+    except Exception as e:
+        st.error(f"Failed to download CSV from Google Drive: {e}")
+        return None
+
+
+@st.cache_data(show_spinner=False, ttl=3600)  # Cache for 1 hour
 def load_alumni() -> pd.DataFrame:
     ensure_data()
-    df = pd.read_csv(ALUMNI_CSV)
+
+    df = None
+
+    # Try to load from Google Drive first if URL is configured
+    if GOOGLE_DRIVE_URL and GOOGLE_DRIVE_FILE_ID:
+        with st.spinner("Loading alumni data from Google Drive..."):
+            df = download_csv_from_google_drive(GOOGLE_DRIVE_URL)
+            if df is not None:
+                st.success("✓ Data loaded from Google Drive", icon="✅")
+
+    # Fall back to local CSV if Google Drive fails or not configured
+    if df is None and os.path.exists(ALUMNI_CSV):
+        # Load the local LinkedIn-enriched CSV
+        df = pd.read_csv(ALUMNI_CSV)
+        st.info("Using local CSV file")
+
+    # If still no data, use seed data
+    if df is None:
+        df = pd.DataFrame(SEED)
+        st.warning("Using sample data. Please configure Google Drive URL or add local CSV.")
+
+    # Process the DataFrame regardless of source
+    if "Name" in df.columns:  # New LinkedIn CSV format
+        process_linkedin_csv(df)
+    else:  # Old format or seed data
+        # Add compatibility columns for old format
+        if "companies_list" not in df.columns:
+            df["companies_list"] = df["company"].apply(lambda x: [x] if x else [])
+        if "schools_list" not in df.columns:
+            df["schools_list"] = [[]]
+        if "professional_email" not in df.columns:
+            df["professional_email"] = ""
+        if "company_industry" not in df.columns:
+            df["company_industry"] = ""
+        if "location" not in df.columns:
+            df["location"] = ""
+        if "headline" not in df.columns:
+            df["headline"] = ""
+        if "profile_image_url" not in df.columns:
+            df["profile_image_url"] = ""
+
+    # Ensure all required columns exist and are strings
     cols = ["name", "role_title", "company", "major", "grad_year", "linkedin", "email", "phone"]
     for c in cols:
         if c not in df.columns:
             df[c] = ""
         df[c] = df[c].fillna("").astype(str)
+
     # Add a normalized grad year for numeric sorting
     def to_int_safe(x):
         try:
-            return int(x)
+            return int(float(x))  # Handle both int and float strings
         except Exception:
             return None
     df["grad_year_int"] = df["grad_year"].apply(to_int_safe)
     return df
+
+def process_linkedin_csv(df: pd.DataFrame):
+    """Process LinkedIn CSV format into standard format."""
+    # Map the new columns to our internal names
+    df["name"] = df["Name"].fillna("")
+    df["linkedin"] = df["linkedinProfileUrl"].fillna(df["Linkedin"].fillna("")) if "linkedinProfileUrl" in df.columns else df.get("Linkedin", "").fillna("")
+    df["email"] = df["Personal Gmail"].fillna("") if "Personal Gmail" in df.columns else ""
+    df["professional_email"] = df["professionalEmail"].fillna("") if "professionalEmail" in df.columns else ""
+    df["grad_year"] = df["Grad Yr"].fillna("").astype(str) if "Grad Yr" in df.columns else ""
+    df["major"] = df["Major"].fillna("") if "Major" in df.columns else ""
+    df["role_title"] = df["linkedinJobTitle"].fillna(df["linkedinHeadline"].fillna("")) if "linkedinJobTitle" in df.columns else ""
+    df["company"] = df["companyName"].fillna("") if "companyName" in df.columns else ""
+    df["company_industry"] = df["companyIndustry"].fillna("") if "companyIndustry" in df.columns else ""
+    df["location"] = df.get("location", df.get("linkedinJobLocation", "")).fillna("")
+    df["headline"] = df["linkedinHeadline"].fillna("") if "linkedinHeadline" in df.columns else ""
+    df["profile_image_url"] = df["linkedinProfileImageUrl"].fillna("") if "linkedinProfileImageUrl" in df.columns else ""
+
+    # Build companies list from current and previous companies
+    def build_companies_list(row):
+        companies = []
+        if "companyName" in row and row["companyName"] and str(row["companyName"]).strip():
+            companies.append(str(row["companyName"]).strip())
+        if "previousCompanyName" in row and row["previousCompanyName"] and str(row["previousCompanyName"]).strip():
+            companies.append(str(row["previousCompanyName"]).strip())
+        return companies
+
+    df["companies_list"] = df.apply(build_companies_list, axis=1)
+
+    # Build schools list from LinkedIn school fields
+    def build_schools_list(row):
+        schools = []
+        if "linkedinSchoolName" in row and row["linkedinSchoolName"] and str(row["linkedinSchoolName"]).strip():
+            schools.append(str(row["linkedinSchoolName"]).strip())
+        if "linkedinPreviousSchoolName" in row and row["linkedinPreviousSchoolName"] and str(row["linkedinPreviousSchoolName"]).strip():
+            schools.append(str(row["linkedinPreviousSchoolName"]).strip())
+        return schools
+
+    df["schools_list"] = df.apply(build_schools_list, axis=1)
+
+    # Add phone column (not in new format)
+    df["phone"] = ""
 
 
 def mailto(email: str) -> str:
@@ -168,12 +287,13 @@ CARD_CSS = """
 .card-header {
   display: flex; align-items: center; gap: 14px; margin-bottom: 12px;
 }
-.avatar {
+.avatar, img.avatar {
   width: 48px; height: 48px; border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8); 
-  color: #ffffff; 
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #ffffff;
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; letter-spacing: 0.5px; font-size: 16px;
+  object-fit: cover;
 }
 .name { 
   font-size: 20px; 
@@ -226,40 +346,64 @@ CARD_CSS = """
 def render_card(row: pd.Series) -> str:
     initials = "".join([part[0].upper() for part in row["name"].split()[:2]]) or "A"
     company = row["company"] or "—"
-    role = row["role_title"] or "—"
+    role = row["role_title"] or row["headline"] or "—"
     major = row["major"] or "—"
-    gy = row["grad_year"] or "—"
+    gy = row["grad_year"] if row["grad_year"] and row["grad_year"] != "nan" else "—"
     linkedin = row["linkedin"]
     email = row["email"]
-    phone = row["phone"]
+    professional_email = row.get("professional_email", "")
+    location = row.get("location", "")
+    industry = row.get("company_industry", "")
+    profile_image = row.get("profile_image_url", "")
+
+    # Use profile image if available, otherwise use initials
+    avatar_html = f'<div class="avatar">{initials}</div>'
+    if profile_image:
+        avatar_html = f'<img src="{profile_image}" class="avatar" alt="{row["name"]}" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';"/><div class="avatar" style="display:none;">{initials}</div>'
 
     links = []
     if linkedin:
         links.append(f'<a href="{linkedin}" target="_blank">🔗 LinkedIn</a>')
+    if professional_email:
+        links.append(f'<a href="{mailto(professional_email)}">📧 Work Email</a>')
     if email:
-        links.append(f'<a href="{mailto(email)}">✉️ Email</a>')
-    if phone:
-        links.append(f'📞 {phone}')
+        links.append(f'<a href="{mailto(email)}">✉️ Personal</a>')
+
+    # Add location and industry pills if available
+    meta_pills = [f'<span class="pill">Major: {major}</span>']
+    if gy != "—":
+        meta_pills.append(f'<span class="pill">Class of {gy}</span>')
+    if location:
+        meta_pills.append(f'<span class="pill">📍 {location}</span>')
+    if industry:
+        meta_pills.append(f'<span class="pill">{industry}</span>')
+
+    # Show company history if multiple companies
+    companies_list = row.get("companies_list", [])
+    if len(companies_list) > 1:
+        company_display = f"{company} <small>(+{len(companies_list)-1} more)</small>"
+    else:
+        company_display = company
 
     return f"""
     <div class="card">
       <div class="card-header">
-        <div class="avatar">{initials}</div>
+        {avatar_html}
         <div>
           <p class="name">{row['name']}</p>
-          <p class="role"><strong>{role}</strong> @ {company}</p>
+          <p class="role"><strong>{role}</strong></p>
+          <p class="role" style="font-size: 14px; margin-top: 2px;">@ {company_display}</p>
         </div>
       </div>
       <div class="meta">
-        <span class="pill">Major: {major}</span>
-        <span class="pill">Grad Year: {gy}</span>
+        {' '.join(meta_pills)}
       </div>
       <div class="links">{'&nbsp;&nbsp;•&nbsp;&nbsp;'.join(links)}</div>
     </div>
     """
 
 
-def filter_controls(df: pd.DataFrame) -> Tuple[str, List[str], List[str], List[str]]:
+def filter_controls(df: pd.DataFrame) -> Tuple[str, List[str], List[str], List[str], List[str], List[str]]:
     with st.sidebar:
         st.title("🔎 Filters")
         st.caption("Use any combination. Leave blank to show all.")
@@ -267,11 +411,26 @@ def filter_controls(df: pd.DataFrame) -> Tuple[str, List[str], List[str], List[s
         majors = sorted([m for m in df["major"].unique() if m])
         sel_majors = st.multiselect("Major", majors)
 
-        years = sorted({str(y) for y in df["grad_year"].tolist() if str(y).strip()})
+        years = sorted({str(y) for y in df["grad_year"].tolist() if str(y).strip() and str(y) != "nan"})
         sel_years = st.multiselect("Graduation year", years)
 
-        companies = sorted([c for c in df["company"].unique() if c])
+        # Get all unique companies from the companies_list column
+        all_companies = set()
+        for companies_list in df["companies_list"]:
+            all_companies.update(companies_list)
+        companies = sorted([c for c in all_companies if c])
         sel_companies = st.multiselect("Companies worked at", companies)
+
+        # Get all unique schools
+        all_schools = set()
+        for schools_list in df["schools_list"]:
+            all_schools.update(schools_list)
+        schools = sorted([s for s in all_schools if s])
+        sel_schools = st.multiselect("Schools attended", schools)
+
+        # Industry filter
+        industries = sorted([i for i in df["company_industry"].unique() if i])
+        sel_industries = st.multiselect("Industry", industries)
 
         st.markdown("---")
         st.caption("Sorting")
@@ -290,19 +449,37 @@ def filter_controls(df: pd.DataFrame) -> Tuple[str, List[str], List[str], List[s
 
         st.markdown("---")
         if st.button("Reset filters"):
-            st.experimental_rerun()
+            st.rerun()
 
-    return q_title, sel_majors, sel_years, sel_companies
+    return q_title, sel_majors, sel_years, sel_companies, sel_schools, sel_industries
 
 
-def row_matches(row: pd.Series, q_title: str, sel_majors: List[str], sel_years: List[str], sel_companies: List[str]) -> bool:
+def row_matches(row: pd.Series, q_title: str, sel_majors: List[str], sel_years: List[str],
+                sel_companies: List[str], sel_schools: List[str], sel_industries: List[str]) -> bool:
     ok_title = True
     if q_title.strip():
-        ok_title = q_title.lower() in row.get("role_title", "").lower()
+        # Search in both job title and headline
+        ok_title = (q_title.lower() in row.get("role_title", "").lower() or
+                   q_title.lower() in row.get("headline", "").lower())
     ok_major = (not sel_majors) or (row.get("major", "") in set(sel_majors))
     ok_year = (not sel_years) or (str(row.get("grad_year", "")) in set(sel_years))
-    ok_company = (not sel_companies) or (row.get("company", "") in set(sel_companies))
-    return ok_title and ok_major and ok_year and ok_company
+
+    # Check if any selected company is in the person's companies list
+    ok_company = True
+    if sel_companies:
+        person_companies = row.get("companies_list", [])
+        ok_company = any(c in person_companies for c in sel_companies)
+
+    # Check if any selected school is in the person's schools list
+    ok_school = True
+    if sel_schools:
+        person_schools = row.get("schools_list", [])
+        ok_school = any(s in person_schools for s in sel_schools)
+
+    # Check industry
+    ok_industry = (not sel_industries) or (row.get("company_industry", "") in set(sel_industries))
+
+    return ok_title and ok_major and ok_year and ok_company and ok_school and ok_industry
 
 
 # ----------------------------
@@ -315,9 +492,9 @@ def main():
     st.markdown(CARD_CSS, unsafe_allow_html=True)
 
     df = load_alumni()
-    q_title, sel_majors, sel_years, sel_companies = filter_controls(df)
+    q_title, sel_majors, sel_years, sel_companies, sel_schools, sel_industries = filter_controls(df)
 
-    filtered = df[df.apply(lambda r: row_matches(r, q_title, sel_majors, sel_years, sel_companies), axis=1)].copy()
+    filtered = df[df.apply(lambda r: row_matches(r, q_title, sel_majors, sel_years, sel_companies, sel_schools, sel_industries), axis=1)].copy()
 
     # Sorting (handles string columns + numeric grad year via grad_year_int)
     sort_col = st.session_state.get("_sort_col", "name")
