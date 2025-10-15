@@ -194,6 +194,9 @@ def load_alumni() -> pd.DataFrame:
             df[c] = ""
         df[c] = df[c].fillna("").astype(str)
 
+    # Standardize names to "First Last" format
+    df["name"] = df["name"].apply(standardize_name)
+    
     # Add a normalized grad year for numeric sorting
     def to_int_safe(x):
         try:
@@ -224,8 +227,12 @@ def process_linkedin_csv(df: pd.DataFrame):
     # Handle job title - check both columns
     if "linkedinJobTitle" in df.columns:
         df["role_title"] = df["linkedinJobTitle"].fillna("")
-        if df["role_title"].str.strip().eq("").all() and "linkedinHeadline" in df.columns:
-            df["role_title"] = df["linkedinHeadline"].fillna("")
+        # For rows where role_title is empty, use headline as fallback
+        if "linkedinHeadline" in df.columns:
+            df["role_title"] = df.apply(
+                lambda row: row["role_title"] if row["role_title"] and row["role_title"].strip() 
+                else row.get("linkedinHeadline", ""), axis=1
+            )
     elif "linkedinHeadline" in df.columns:
         df["role_title"] = df["linkedinHeadline"].fillna("")
     else:
@@ -386,9 +393,38 @@ CARD_CSS = """
 """
 
 
+def clean_grad_year(grad_year_str: str) -> str:
+    """Clean graduation year to remove decimal points and display as whole number."""
+    if not grad_year_str or grad_year_str in ["nan", "None", ""]:
+        return "—"
+    
+    try:
+        # Convert to float first to handle decimal strings, then to int to remove decimals
+        year = int(float(grad_year_str))
+        return str(year)
+    except (ValueError, TypeError):
+        return "—"
+
+def standardize_name(name_str: str) -> str:
+    """Standardize name format to 'First Last' regardless of input format."""
+    if not name_str or name_str.strip() in ["nan", "None", ""]:
+        return ""
+    
+    name = name_str.strip()
+    
+    # Handle "Last, First" format
+    if "," in name:
+        parts = [part.strip() for part in name.split(",", 1)]
+        if len(parts) == 2:
+            return f"{parts[1]} {parts[0]}"
+    
+    # Handle "First Last" format (already correct)
+    return name
+
+
 def render_card(row: pd.Series) -> str:
     # Skip empty rows
-    name = str(row.get("name", "")).strip()
+    name = standardize_name(str(row.get("name", "")))
     if not name:
         return ""  # Return empty string for blank entries
 
@@ -396,8 +432,7 @@ def render_card(row: pd.Series) -> str:
     company = str(row.get("company", "")).strip() or "—"
     role = str(row.get("role_title", "")).strip() or str(row.get("headline", "")).strip() or "—"
     major = str(row.get("major", "")).strip() or "—"
-    gy = str(row.get("grad_year", "")).strip()
-    gy = gy if gy and gy != "nan" and gy != "None" else "—"
+    gy = clean_grad_year(str(row.get("grad_year", "")))
     linkedin = str(row.get("linkedin", "")).strip()
     email = str(row.get("email", "")).strip()
     professional_email = str(row.get("professional_email", "")).strip()
@@ -464,7 +499,7 @@ def filter_controls(df: pd.DataFrame) -> Tuple[str, str, List[str], List[str], L
         majors = sorted([m for m in df["major"].unique() if m])
         sel_majors = st.multiselect("Major", majors)
 
-        years = sorted({str(y) for y in df["grad_year"].tolist() if str(y).strip() and str(y) != "nan"})
+        years = sorted({clean_grad_year(str(y)) for y in df["grad_year"].tolist() if clean_grad_year(str(y)) != "—"})
         sel_years = st.multiselect("Graduation year", years)
 
         # Get all unique companies from the companies_list column
@@ -512,7 +547,8 @@ def row_matches(row: pd.Series, q_name: str, q_title: str, sel_majors: List[str]
     # Name search
     ok_name = True
     if q_name.strip():
-        ok_name = q_name.lower() in row.get("name", "").lower()
+        standardized_name = standardize_name(str(row.get("name", "")))
+        ok_name = q_name.lower() in standardized_name.lower()
 
     ok_title = True
     if q_title.strip():
@@ -520,7 +556,7 @@ def row_matches(row: pd.Series, q_name: str, q_title: str, sel_majors: List[str]
         ok_title = (q_title.lower() in row.get("role_title", "").lower() or
                    q_title.lower() in row.get("headline", "").lower())
     ok_major = (not sel_majors) or (row.get("major", "") in set(sel_majors))
-    ok_year = (not sel_years) or (str(row.get("grad_year", "")) in set(sel_years))
+    ok_year = (not sel_years) or (clean_grad_year(str(row.get("grad_year", ""))) in set(sel_years))
 
     # Check if any selected company is in the person's companies list
     ok_company = True
@@ -550,6 +586,7 @@ def main():
     st.markdown(CARD_CSS, unsafe_allow_html=True)
 
     df = load_alumni()
+    
     q_name, q_title, sel_majors, sel_years, sel_companies, sel_schools, sel_industries = filter_controls(df)
 
     filtered = df[df.apply(lambda r: row_matches(r, q_name, q_title, sel_majors, sel_years, sel_companies, sel_schools, sel_industries), axis=1)].copy()
