@@ -405,17 +405,26 @@ def render_card(row: pd.Series) -> str:
         return ""  # Return empty string for blank entries
 
     initials = "".join([part[0].upper() for part in name.split()[:2] if part]) or "?"
-    company = str(row.get("company", "")).strip() or "—"
-    role = str(row.get("role_title", "")).strip() or str(row.get("headline", "")).strip() or "—"
-    major = str(row.get("major", "")).strip() or "—"
-    gy = str(row.get("grad_year", "")).strip()
-    gy = gy if gy and gy != "nan" and gy != "None" else "—"
-    linkedin = str(row.get("linkedin", "")).strip()
-    email = str(row.get("email", "")).strip()
-    professional_email = str(row.get("professional_email", "")).strip()
-    location = str(row.get("location", "")).strip()
-    industry = str(row.get("company_industry", "")).strip()
-    profile_image = str(row.get("profile_image_url", "")).strip()
+
+    # Helper function to clean values and replace nan with N/A
+    def clean_value(val, default="N/A"):
+        val_str = str(val).strip()
+        if not val_str or val_str.lower() in ["nan", "none", ""]:
+            return default
+        return val_str
+
+    company = clean_value(row.get("company", ""))
+    role = clean_value(row.get("role_title", ""))
+    if role == "N/A":
+        role = clean_value(row.get("headline", ""))
+    major = clean_value(row.get("major", ""))
+    gy = clean_value(row.get("grad_year", ""))
+    linkedin = clean_value(row.get("linkedin", ""), "")
+    email = clean_value(row.get("email", ""), "")
+    professional_email = clean_value(row.get("professional_email", ""), "")
+    location = clean_value(row.get("location", ""), "")
+    industry = clean_value(row.get("company_industry", ""), "")
+    profile_image = clean_value(row.get("profile_image_url", ""), "")
 
     # Use profile image if available, otherwise use initials
     # Check if profile_image is valid and not empty
@@ -436,7 +445,7 @@ def render_card(row: pd.Series) -> str:
 
     # Add location and industry pills if available
     meta_pills = [f'<span class="pill">Major: {major}</span>']
-    if gy != "—":
+    if gy != "N/A":
         meta_pills.append(f'<span class="pill">Class of {gy}</span>')
     if location:
         meta_pills.append(f'<span class="pill">📍 {location}</span>')
@@ -445,10 +454,14 @@ def render_card(row: pd.Series) -> str:
 
     # Show all companies in the company history
     companies_list = row.get("companies_list", [])
+    # Filter out any nan/None/empty values from companies list
+    companies_list = [c for c in companies_list if c and str(c).strip().lower() not in ["nan", "none", ""]]
 
     if len(companies_list) > 1:
         # Display all companies separated by bullets
         company_display = ' • '.join(companies_list)
+    elif len(companies_list) == 1:
+        company_display = companies_list[0]
     else:
         company_display = company
 
