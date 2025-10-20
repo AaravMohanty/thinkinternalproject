@@ -194,6 +194,9 @@ def load_alumni() -> pd.DataFrame:
             df[c] = ""
         df[c] = df[c].fillna("").astype(str)
 
+    # Standardize names to "First Last" format
+    df["name"] = df["name"].apply(standardize_name)
+    
     # Add a normalized grad year for numeric sorting
     def to_int_safe(x):
         try:
@@ -229,8 +232,12 @@ def process_linkedin_csv(df: pd.DataFrame):
     # Handle job title - check both columns
     if "linkedinJobTitle" in df.columns:
         df["role_title"] = df["linkedinJobTitle"].fillna("")
-        if df["role_title"].str.strip().eq("").all() and "linkedinHeadline" in df.columns:
-            df["role_title"] = df["linkedinHeadline"].fillna("")
+        # For rows where role_title is empty, use headline as fallback
+        if "linkedinHeadline" in df.columns:
+            df["role_title"] = df.apply(
+                lambda row: row["role_title"] if row["role_title"] and row["role_title"].strip() 
+                else row.get("linkedinHeadline", ""), axis=1
+            )
     elif "linkedinHeadline" in df.columns:
         df["role_title"] = df["linkedinHeadline"].fillna("")
     else:
@@ -285,24 +292,132 @@ def mailto(email: str) -> str:
 # ----------------------------
 CARD_CSS = """
 <style>
-/* Page polish */
-.block-container { padding-top: 2rem; padding-bottom: 2rem; }
+/* Modern Sleek Theme */
+:root {
+  --primary: #6366f1;
+  --primary-dark: #4f46e5;
+  --secondary: #8b5cf6;
+  --accent: #06b6d4;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --dark: #1f2937;
+  --light: #f8fafc;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+}
 
-/* Card grid */
+/* Global styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}
+
+/* Page layout */
+.block-container { 
+  padding: 0;
+  background: transparent;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* Header styling */
+h1 {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 800;
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  text-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.caption {
+  color: rgba(255,255,255,0.9) !important;
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* Results counter */
+.stMarkdown p {
+  color: #ffffff !important;
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+  padding: 1rem 1.5rem;
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.2);
+  text-align: center;
+}
+
+/* Card grid - modern layout */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 16px;
-}
-@media (min-width: 720px) {
-  .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (min-width: 1100px) {
-  .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  gap: 2rem;
+  margin-top: 2rem;
+  padding: 0 1rem;
 }
 
+@media (min-width: 768px) {
+  .card-grid { 
+    grid-template-columns: repeat(2, minmax(0, 1fr)); 
+    gap: 2rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .card-grid { 
+    grid-template-columns: repeat(3, minmax(0, 1fr)); 
+    gap: 2rem;
+  }
+}
+
+/* Modern card design */
 /* Card - Dark Theme */
 .card {
+  border: none;
+  border-radius: 20px;
+  padding: 2rem;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(20px);
+  box-shadow: 
+    0 20px 25px -5px rgba(0,0,0,0.1),
+    0 10px 10px -5px rgba(0,0,0,0.04),
+    0 0 0 1px rgba(255,255,255,0.05);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+  border-radius: 20px 20px 0 0;
   border: 1px solid #374151;
   border-radius: 16px;
   padding: 24px;
@@ -321,14 +436,39 @@ CARD_CSS = """
   height: 3px;
   background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
 }
+
 .card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 
+    0 32px 64px -12px rgba(0,0,0,0.25),
+    0 0 0 1px rgba(255,255,255,0.1);
   transform: translateY(-4px);
   box-shadow: 0 12px 32px rgba(59, 130, 246, 0.3);
   border-color: #60a5fa;
 }
+
 .card-header {
+  display: flex; 
+  align-items: center; 
+  gap: 1.5rem; 
+  margin-bottom: 1.5rem;
   display: flex; align-items: center; gap: 16px; margin-bottom: 16px;
 }
+
+.avatar {
+  width: 64px; 
+  height: 64px; 
+  border-radius: 16px;
+  background: linear-gradient(135deg, #667eea, #764ba2); 
+  color: #ffffff; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  font-weight: 700; 
+  font-size: 20px;
+  flex-shrink: 0;
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+  border: 3px solid rgba(255,255,255,0.2);
 .avatar, img.avatar {
   width: 56px; height: 56px; border-radius: 50%;
   background: linear-gradient(135deg, #3b82f6, #8b5cf6);
@@ -338,6 +478,12 @@ CARD_CSS = """
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
   object-fit: cover;
 }
+
+.name { 
+  font-size: 1.5rem; 
+  font-weight: 700; 
+  margin: 0; 
+  color: var(--gray-900);
 .name {
   font-size: 22px;
   font-weight: 700;
@@ -352,11 +498,38 @@ CARD_CSS = """
   font-size: 15px;
   font-weight: 500;
 }
+
 .meta {
   display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0 12px 0;
   color: #9ca3af; font-size: 13px;
 }
 .meta .pill {
+  border: none; 
+  padding: 0.5rem 1rem; 
+  border-radius: 50px; 
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.meta .pill.major {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #ffffff;
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.meta .pill.year {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: #ffffff;
+  box-shadow: 0 4px 8px rgba(139, 92, 246, 0.3);
+}
+
+.meta .pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
   border: 1px solid #4b5563;
   padding: 6px 14px;
   border-radius: 24px;
@@ -365,10 +538,36 @@ CARD_CSS = """
   font-weight: 500;
   backdrop-filter: blur(8px);
 }
+
 .links {
+  display: flex; 
+  gap: 1rem; 
+  flex-wrap: wrap; 
+  margin-top: 1.5rem;
   display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;
   font-size: 14px;
 }
+
+.links a { 
+  text-decoration: none; 
+  color: #ffffff;
+  font-weight: 600;
+  padding: 0.75rem 1.25rem;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border: none;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.links a:hover { 
+  background: linear-gradient(135deg, #764ba2, #667eea);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
 .links a {
   text-decoration: none;
   color: #60a5fa;
@@ -385,6 +584,109 @@ CARD_CSS = """
   border-color: #60a5fa;
   transform: translateY(-2px);
   text-decoration: none;
+  color: #ffffff;
+}
+
+.links .phone {
+  color: var(--gray-600);
+  font-weight: 600;
+  padding: 0.75rem 1.25rem;
+  background: var(--gray-100);
+  border-radius: 50px;
+  font-size: 0.9rem;
+  border: 1px solid var(--gray-200);
+}
+
+/* Sidebar styling */
+.sidebar {
+  background: rgba(255,255,255,0.1) !important;
+  backdrop-filter: blur(20px) !important;
+  border-radius: 20px !important;
+  margin: 1rem !important;
+  padding: 1.5rem !important;
+}
+
+.sidebar h1, .sidebar h2, .sidebar h3 {
+  color: #ffffff !important;
+}
+
+.sidebar .stTextInput > div > div > input {
+  background: rgba(255,255,255,0.9) !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  border-radius: 12px !important;
+  padding: 0.75rem 1rem !important;
+  font-weight: 500 !important;
+}
+
+.sidebar .stSelectbox > div > div > select {
+  background: rgba(255,255,255,0.9) !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  border-radius: 12px !important;
+  padding: 0.75rem 1rem !important;
+}
+
+.sidebar .stMultiSelect > div > div {
+  background: rgba(255,255,255,0.9) !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  border-radius: 12px !important;
+}
+
+.sidebar .stButton > button {
+  background: linear-gradient(135deg, #667eea, #764ba2) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  padding: 0.75rem 1.5rem !important;
+  transition: all 0.3s ease !important;
+}
+
+.sidebar .stButton > button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3) !important;
+}
+
+/* Download button styling */
+.stDownloadButton > button {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  padding: 0.75rem 1.5rem !important;
+  transition: all 0.3s ease !important;
+}
+
+.stDownloadButton > button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3) !important;
+}
+
+/* Info message styling */
+.stAlert {
+  border-radius: 12px !important;
+  border: none !important;
+  background: rgba(255,255,255,0.1) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.5);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
@@ -398,9 +700,38 @@ CARD_CSS = """
 """
 
 
+def clean_grad_year(grad_year_str: str) -> str:
+    """Clean graduation year to remove decimal points and display as whole number."""
+    if not grad_year_str or grad_year_str in ["nan", "None", ""]:
+        return "—"
+    
+    try:
+        # Convert to float first to handle decimal strings, then to int to remove decimals
+        year = int(float(grad_year_str))
+        return str(year)
+    except (ValueError, TypeError):
+        return "—"
+
+def standardize_name(name_str: str) -> str:
+    """Standardize name format to 'First Last' regardless of input format."""
+    if not name_str or name_str.strip() in ["nan", "None", ""]:
+        return ""
+    
+    name = name_str.strip()
+    
+    # Handle "Last, First" format
+    if "," in name:
+        parts = [part.strip() for part in name.split(",", 1)]
+        if len(parts) == 2:
+            return f"{parts[1]} {parts[0]}"
+    
+    # Handle "First Last" format (already correct)
+    return name
+
+
 def render_card(row: pd.Series) -> str:
     # Skip empty rows
-    name = str(row.get("name", "")).strip()
+    name = standardize_name(str(row.get("name", "")))
     if not name:
         return ""  # Return empty string for blank entries
 
@@ -408,8 +739,7 @@ def render_card(row: pd.Series) -> str:
     company = str(row.get("company", "")).strip() or "—"
     role = str(row.get("role_title", "")).strip() or str(row.get("headline", "")).strip() or "—"
     major = str(row.get("major", "")).strip() or "—"
-    gy = str(row.get("grad_year", "")).strip()
-    gy = gy if gy and gy != "nan" and gy != "None" else "—"
+    gy = clean_grad_year(str(row.get("grad_year", "")))
     linkedin = str(row.get("linkedin", "")).strip()
     email = str(row.get("email", "")).strip()
     professional_email = str(row.get("professional_email", "")).strip()
@@ -480,17 +810,17 @@ def filter_controls(df: pd.DataFrame) -> Tuple[str, str, List[str], List[str], L
 
         q_title = st.text_input("Job title contains", placeholder="e.g., software, analyst")
         majors = sorted([m for m in df["major"].unique() if m])
-        sel_majors = st.multiselect("Major", majors)
+        sel_majors = st.multiselect("🎓 Filter by major", majors, help="Select one or more majors")
 
-        years = sorted({str(y) for y in df["grad_year"].tolist() if str(y).strip() and str(y) != "nan"})
-        sel_years = st.multiselect("Graduation year", years)
+        years = sorted({clean_grad_year(str(y)) for y in df["grad_year"].tolist() if clean_grad_year(str(y)) != "—"})
+        sel_years = st.multiselect("📅 Filter by graduation year", years, help="Select one or more graduation years")
 
         # Get all unique companies from the companies_list column
         all_companies = set()
         for companies_list in df["companies_list"]:
             all_companies.update(companies_list)
         companies = sorted([c for c in all_companies if c])
-        sel_companies = st.multiselect("Companies worked at", companies)
+        sel_companies = st.multiselect("🏢 Filter by company", companies, help="Select one or more companies")
 
         # Get all unique schools
         all_schools = set()
@@ -504,7 +834,7 @@ def filter_controls(df: pd.DataFrame) -> Tuple[str, str, List[str], List[str], L
         sel_industries = st.multiselect("Industry", industries)
 
         st.markdown("---")
-        st.caption("Sorting")
+        st.subheader("⚡ Sort Results")
         sort_field_map = {
             "Name": "name",
             "Company": "company",
@@ -513,12 +843,18 @@ def filter_controls(df: pd.DataFrame) -> Tuple[str, str, List[str], List[str], L
             "Major": "major",
         }
         sort_by_label = st.selectbox("Sort by", list(sort_field_map.keys()), index=0)
-        ascending = st.toggle("Ascending", value=True)
+        ascending = st.toggle("Ascending order", value=True)
         # Store chosen mapping for main page to use
         st.session_state["_sort_col"] = sort_field_map[sort_by_label]
         st.session_state["_sort_asc"] = ascending
 
         st.markdown("---")
+        if st.button("🔄 Clear all filters", type="secondary"):
+            # Clear all session state related to filters
+            for key in list(st.session_state.keys()):
+                if key.startswith("_filter_"):
+                    del st.session_state[key]
+            st.rerun()
         if st.button("Reset filters"):
             st.rerun()
 
@@ -538,15 +874,18 @@ def row_matches(row: pd.Series, q_name: str, q_title: str, sel_majors: List[str]
     # Name search
     ok_name = True
     if q_name.strip():
-        ok_name = q_name.lower() in row.get("name", "").lower()
+        standardized_name = standardize_name(str(row.get("name", "")))
+        ok_name = q_name.lower() in standardized_name.lower()
 
     ok_title = True
     if q_title.strip():
         # Search in both job title and headline
         ok_title = (q_title.lower() in row.get("role_title", "").lower() or
                    q_title.lower() in row.get("headline", "").lower())
+    
+    # Other filters
     ok_major = (not sel_majors) or (row.get("major", "") in set(sel_majors))
-    ok_year = (not sel_years) or (str(row.get("grad_year", "")) in set(sel_years))
+    ok_year = (not sel_years) or (clean_grad_year(str(row.get("grad_year", ""))) in set(sel_years))
 
     # Check if any selected company is in the person's companies list
     ok_company = True
@@ -570,12 +909,13 @@ def row_matches(row: pd.Series, q_name: str, q_title: str, sel_majors: List[str]
 # App
 # ----------------------------
 def main():
-    st.set_page_config(page_title=APP_TITLE, page_icon="🤝", layout="wide")
+    st.set_page_config(page_title=APP_TITLE, page_icon="🚀", layout="wide")
     st.title(APP_TITLE)
-    st.caption("Filter alumni by job title, major, graduation year, and companies worked at.")
+    st.caption("Discover and connect with PurdueTHINK alumni. Find the perfect contact for your next project or collaboration.")
     st.markdown(CARD_CSS, unsafe_allow_html=True)
 
     df = load_alumni()
+    
     q_name, q_title, sel_majors, sel_years, sel_companies, sel_schools, sel_industries = filter_controls(df)
 
     filtered = df[df.apply(lambda r: row_matches(r, q_name, q_title, sel_majors, sel_years, sel_companies, sel_schools, sel_industries), axis=1)].copy()
