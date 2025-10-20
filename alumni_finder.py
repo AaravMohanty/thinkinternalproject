@@ -201,6 +201,11 @@ def load_alumni() -> pd.DataFrame:
         except Exception:
             return None
     df["grad_year_int"] = df["grad_year"].apply(to_int_safe)
+
+    # Remove duplicates based on name and email combination
+    # Keep the first occurrence of each unique person
+    df = df.drop_duplicates(subset=["name", "email"], keep="first")
+
     return df
 
 def process_linkedin_csv(df: pd.DataFrame):
@@ -382,6 +387,13 @@ CARD_CSS = """
   text-decoration: none;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
+
+/* Company list display */
+.company-list {
+  color: #d1d5db;
+  font-size: 13px;
+  line-height: 1.4;
+}
 </style>
 """
 
@@ -406,9 +418,13 @@ def render_card(row: pd.Series) -> str:
     profile_image = str(row.get("profile_image_url", "")).strip()
 
     # Use profile image if available, otherwise use initials
-    avatar_html = f'<div class="avatar">{initials}</div>'
-    if profile_image and profile_image != "nan" and profile_image != "None":
-        avatar_html = f'<img src="{profile_image}" class="avatar" alt="{name}" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';"/><div class="avatar" style="display:none;">{initials}</div>'
+    # Check if profile_image is valid and not empty
+    if profile_image and profile_image != "nan" and profile_image != "None" and profile_image != "" and profile_image.startswith("http"):
+        # Show image with fallback to initials if image fails to load
+        avatar_html = f'<div style="position: relative; width: 56px; height: 56px;"><img src="{profile_image}" class="avatar" alt="{name}" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" onload="this.nextElementSibling.style.display=\'none\';"/><div class="avatar" style="display: none;">{initials}</div></div>'
+    else:
+        # No valid image URL, show initials
+        avatar_html = f'<div class="avatar">{initials}</div>'
 
     links = []
     if linkedin:
@@ -427,10 +443,12 @@ def render_card(row: pd.Series) -> str:
     if industry:
         meta_pills.append(f'<span class="pill">{industry}</span>')
 
-    # Show company history if multiple companies
+    # Show all companies in the company history
     companies_list = row.get("companies_list", [])
+
     if len(companies_list) > 1:
-        company_display = f"{company} <small>(+{len(companies_list)-1} more)</small>"
+        # Display all companies separated by bullets
+        company_display = ' • '.join(companies_list)
     else:
         company_display = company
 
@@ -502,6 +520,14 @@ def filter_controls(df: pd.DataFrame) -> Tuple[str, str, List[str], List[str], L
 
         st.markdown("---")
         if st.button("Reset filters"):
+            st.rerun()
+
+        # Add refresh data button
+        st.markdown("---")
+        st.caption("Data Management")
+        if st.button("🔄 Refresh Data from Google Drive"):
+            st.cache_data.clear()
+            st.success("Cache cleared! Reloading fresh data...")
             st.rerun()
 
     return q_name, q_title, sel_majors, sel_years, sel_companies, sel_schools, sel_industries
