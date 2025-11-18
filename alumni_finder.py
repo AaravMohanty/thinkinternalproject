@@ -288,6 +288,131 @@ CARD_CSS = """
 /* Page polish */
 .block-container { padding-top: 2rem; padding-bottom: 2rem; }
 
+/* Contact Card - MASSIVE FLASHING NEON */
+.contact-card {
+  background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+  border: 8px solid;
+  border-radius: 30px;
+  padding: 60px;
+  margin-bottom: 40px;
+  box-shadow: 0 0 80px rgba(255, 0, 255, 0.8), 0 0 120px rgba(0, 255, 255, 0.6);
+  text-align: center;
+  animation: rainbow-border 3s infinite, card-pop 2s infinite, mega-glow 1.5s infinite;
+  transform-origin: center;
+}
+@keyframes rainbow-border {
+  0% { border-color: #ff0000; box-shadow: 0 0 80px rgba(255, 0, 0, 0.9), 0 0 120px rgba(255, 0, 0, 0.6), inset 0 0 60px rgba(255, 0, 0, 0.3); }
+  14% { border-color: #ff7700; box-shadow: 0 0 80px rgba(255, 119, 0, 0.9), 0 0 120px rgba(255, 119, 0, 0.6), inset 0 0 60px rgba(255, 119, 0, 0.3); }
+  28% { border-color: #ffff00; box-shadow: 0 0 80px rgba(255, 255, 0, 0.9), 0 0 120px rgba(255, 255, 0, 0.6), inset 0 0 60px rgba(255, 255, 0, 0.3); }
+  42% { border-color: #00ff00; box-shadow: 0 0 80px rgba(0, 255, 0, 0.9), 0 0 120px rgba(0, 255, 0, 0.6), inset 0 0 60px rgba(0, 255, 0, 0.3); }
+  57% { border-color: #00ffff; box-shadow: 0 0 80px rgba(0, 255, 255, 0.9), 0 0 120px rgba(0, 255, 255, 0.6), inset 0 0 60px rgba(0, 255, 255, 0.3); }
+  71% { border-color: #0000ff; box-shadow: 0 0 80px rgba(0, 0, 255, 0.9), 0 0 120px rgba(0, 0, 255, 0.6), inset 0 0 60px rgba(0, 0, 255, 0.3); }
+  85% { border-color: #ff00ff; box-shadow: 0 0 80px rgba(255, 0, 255, 0.9), 0 0 120px rgba(255, 0, 255, 0.6), inset 0 0 60px rgba(255, 0, 255, 0.3); }
+  100% { border-color: #ff0000; box-shadow: 0 0 80px rgba(255, 0, 0, 0.9), 0 0 120px rgba(255, 0, 0, 0.6), inset 0 0 60px rgba(255, 0, 0, 0.3); }
+}
+@keyframes card-pop {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+@keyframes mega-glow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+}
+.contact-card h1 {
+  font-size: 48px;
+  font-weight: 900;
+  margin: 0 0 30px 0;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  line-height: 1.5;
+}
+.letter {
+  display: inline-block;
+  animation: letter-jump 0.8s infinite, letter-spin 1.2s infinite, letter-color 2s infinite;
+}
+@keyframes letter-jump {
+  0%, 100% { transform: translateY(0) scale(1); }
+  25% { transform: translateY(-30px) scale(1.2); }
+  50% { transform: translateY(0) scale(1); }
+  75% { transform: translateY(-15px) scale(1.1); }
+}
+@keyframes letter-spin {
+  0% { transform: rotate(0deg) translateY(0); }
+  25% { transform: rotate(180deg) translateY(-30px); }
+  50% { transform: rotate(360deg) translateY(0); }
+  75% { transform: rotate(540deg) translateY(-15px); }
+  100% { transform: rotate(720deg) translateY(0); }
+}
+@keyframes letter-color {
+  0% { color: #ff0000; text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000, 0 0 60px #ff0000, 0 0 80px #ff0000; }
+  14% { color: #ff7700; text-shadow: 0 0 20px #ff7700, 0 0 40px #ff7700, 0 0 60px #ff7700, 0 0 80px #ff7700; }
+  28% { color: #ffff00; text-shadow: 0 0 20px #ffff00, 0 0 40px #ffff00, 0 0 60px #ffff00, 0 0 80px #ffff00; }
+  42% { color: #00ff00; text-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00, 0 0 60px #00ff00, 0 0 80px #00ff00; }
+  57% { color: #00ffff; text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff, 0 0 60px #00ffff, 0 0 80px #00ffff; }
+  71% { color: #0000ff; text-shadow: 0 0 20px #0000ff, 0 0 40px #0000ff, 0 0 60px #0000ff, 0 0 80px #0000ff; }
+  85% { color: #ff00ff; text-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff, 0 0 60px #ff00ff, 0 0 80px #ff00ff; }
+  100% { color: #ff0000; text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000, 0 0 60px #ff0000, 0 0 80px #ff0000; }
+}
+.contact-card .phone {
+  font-size: 120px;
+  font-weight: 900;
+  margin: 30px 0;
+  letter-spacing: 12px;
+  font-family: 'Impact', 'Arial Black', sans-serif;
+  text-decoration: none;
+}
+.phone-digit {
+  display: inline-block;
+  animation: digit-bounce 0.6s infinite, digit-rotate 1s infinite, digit-color 0.8s infinite;
+}
+@keyframes digit-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  25% { transform: translateY(-50px) scale(1.3); }
+  50% { transform: translateY(0) scale(1); }
+  75% { transform: translateY(-25px) scale(1.15); }
+}
+@keyframes digit-rotate {
+  0% { transform: rotate(0deg) translateY(0); }
+  25% { transform: rotate(360deg) translateY(-50px); }
+  50% { transform: rotate(720deg) translateY(0); }
+  75% { transform: rotate(1080deg) translateY(-25px); }
+  100% { transform: rotate(1440deg) translateY(0); }
+}
+@keyframes digit-color {
+  0% { color: #ff0000; text-shadow: 0 0 40px #ff0000, 0 0 80px #ff0000, 0 0 120px #ff0000, 0 0 160px #ff0000; }
+  12.5% { color: #ff7700; text-shadow: 0 0 40px #ff7700, 0 0 80px #ff7700, 0 0 120px #ff7700, 0 0 160px #ff7700; }
+  25% { color: #ffff00; text-shadow: 0 0 40px #ffff00, 0 0 80px #ffff00, 0 0 120px #ffff00, 0 0 160px #ffff00; }
+  37.5% { color: #00ff00; text-shadow: 0 0 40px #00ff00, 0 0 80px #00ff00, 0 0 120px #00ff00, 0 0 160px #00ff00; }
+  50% { color: #00ffff; text-shadow: 0 0 40px #00ffff, 0 0 80px #00ffff, 0 0 120px #00ffff, 0 0 160px #00ffff; }
+  62.5% { color: #0000ff; text-shadow: 0 0 40px #0000ff, 0 0 80px #0000ff, 0 0 120px #0000ff, 0 0 160px #0000ff; }
+  75% { color: #ff00ff; text-shadow: 0 0 40px #ff00ff, 0 0 80px #ff00ff, 0 0 120px #ff00ff, 0 0 160px #ff00ff; }
+  87.5% { color: #ffffff; text-shadow: 0 0 40px #ffffff, 0 0 80px #ffffff, 0 0 120px #ffffff, 0 0 160px #ffffff; }
+  100% { color: #ff0000; text-shadow: 0 0 40px #ff0000, 0 0 80px #ff0000, 0 0 120px #ff0000, 0 0 160px #ff0000; }
+}
+.contact-card .subtext {
+  font-size: 24px;
+  font-weight: 700;
+  margin-top: 20px;
+  animation: subtext-glow 2s infinite;
+}
+@keyframes subtext-glow {
+  0% { color: #ff00ff; text-shadow: 0 0 15px #ff00ff, 0 0 30px #ff00ff; }
+  50% { color: #00ffff; text-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff; }
+  100% { color: #ff00ff; text-shadow: 0 0 15px #ff00ff, 0 0 30px #ff00ff; }
+}
+
+/* Massive SEX text */
+.massive-text {
+  text-align: center;
+  margin: 40px 0;
+  font-size: 200px;
+  font-weight: 900;
+  color: #ff0000;
+  text-shadow: 0 0 40px #ff0000, 0 0 80px #ff0000;
+  letter-spacing: 20px;
+  font-family: 'Impact', 'Arial Black', sans-serif;
+}
+
 /* Card grid */
 .card-grid {
   display: grid;

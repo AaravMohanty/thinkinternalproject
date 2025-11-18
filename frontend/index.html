@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="THINKedIn - PurdueTHINK Alumni Network">
+    <title>THINKedIn - PurdueTHINK</title>
+    <link rel="stylesheet" href="styles/global.css">
+    <link rel="stylesheet" href="styles/people.css">
+</head>
+<body>
+    <!-- App Header -->
+    <header class="app-header">
+        <div class="header-content">
+            <img src="assets/Copy of P logo for medium or dark background (1).png" alt="PurdueTHINK" class="logo">
+            <h2 class="header-title">THINKedIn</h2>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">Find Alumni</h1>
+            <p class="hero-subtitle">Connect with PurdueTHINK alumni across industries and roles</p>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="alumni-finder-wrapper">
+        <div class="container-wide">
+            <div class="alumni-layout">
+                <!-- Sidebar Filters -->
+                <aside class="filters-sidebar" id="filtersSidebar">
+                    <div class="filters-header">
+                        <h2>Filters</h2>
+                        <button class="btn-reset" id="resetFilters">Reset All</button>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="searchName">Search by Name</label>
+                        <input
+                            type="text"
+                            id="searchName"
+                            class="filter-input"
+                            placeholder="e.g., John, Smith">
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="searchTitle">Job Title</label>
+                        <input
+                            type="text"
+                            id="searchTitle"
+                            class="filter-input"
+                            placeholder="e.g., software, analyst">
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="filterMajor">Major</label>
+                        <select id="filterMajor" class="filter-select" multiple>
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="filterYear">Graduation Year</label>
+                        <select id="filterYear" class="filter-select" multiple>
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="filterCompany">Company</label>
+                        <select id="filterCompany" class="filter-select" multiple>
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="filterIndustry">Industry</label>
+                        <select id="filterIndustry" class="filter-select" multiple>
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="sortBy">Sort By</label>
+                        <select id="sortBy" class="filter-select">
+                            <option value="name">Name</option>
+                            <option value="company">Company</option>
+                            <option value="grad_year">Graduation Year</option>
+                            <option value="major">Major</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="sortAscending" checked>
+                            <span>Ascending Order</span>
+                        </label>
+                    </div>
+                </aside>
+
+                <!-- Alumni Grid -->
+                <main class="alumni-content">
+                    <div class="alumni-controls">
+                        <button class="btn-toggle-filters" id="toggleFilters">
+                            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/>
+                            </svg>
+                            Filters
+                        </button>
+                        <div class="results-count">
+                            <span id="resultsCount">Loading...</span>
+                        </div>
+                    </div>
+
+                    <div id="loadingSpinner" class="loading-spinner">
+                        <div class="spinner"></div>
+                        <p>Loading alumni data...</p>
+                    </div>
+
+                    <div id="alumniGrid" class="alumni-grid">
+                        <!-- Alumni cards will be dynamically inserted here -->
+                    </div>
+
+                    <div id="noResults" class="no-results" style="display: none;">
+                        <svg width="64" height="64" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                        </svg>
+                        <h3>No results found</h3>
+                        <p>Try adjusting your filters or search terms</p>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <h3 class="footer-brand">PurdueTHINK</h3>
+            <p class="copyright">© PurdueTHINK 2025</p>
+        </div>
+    </footer>
+
+    <script src="scripts/main.js"></script>
+    <script src="scripts/alumni.js"></script>
+</body>
+</html>
