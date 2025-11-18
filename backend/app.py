@@ -75,6 +75,63 @@ def download_csv_from_google_drive(url):
         return None
 
 
+def get_image_hash(url):
+    """Generate a unique filename from image URL."""
+    return hashlib.md5(url.encode()).hexdigest()
+
+
+def download_and_cache_image(image_url, person_name=""):
+    """Download image from URL and cache it locally. Returns cached filename or None."""
+    if not image_url or str(image_url).strip() in ['', 'nan', 'null', 'None']:
+        return None
+
+    try:
+        # Generate cache filename from URL hash
+        image_hash = get_image_hash(image_url)
+        # Try common image extensions
+        for ext in ['.jpg', '.jpeg', '.png', '.webp']:
+            cached_path = os.path.join(CACHE_DIR, f"{image_hash}{ext}")
+            if os.path.exists(cached_path):
+                print(f"Using cached image for {person_name}: {image_hash}{ext}")
+                return f"{image_hash}{ext}"
+
+        # If not cached, download it
+        print(f"Downloading image for {person_name}...")
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+            'Referer': 'https://www.linkedin.com/'
+        }
+
+        response = requests.get(image_url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        # Detect image format from content-type
+        content_type = response.headers.get('Content-Type', '')
+        if 'jpeg' in content_type or 'jpg' in content_type:
+            ext = '.jpg'
+        elif 'png' in content_type:
+            ext = '.png'
+        elif 'webp' in content_type:
+            ext = '.webp'
+        else:
+            ext = '.jpg'  # Default fallback
+
+        cached_filename = f"{image_hash}{ext}"
+        cached_path = os.path.join(CACHE_DIR, cached_filename)
+
+        # Save image to cache
+        with open(cached_path, 'wb') as f:
+            f.write(response.content)
+
+        print(f"Successfully cached image for {person_name}: {cached_filename}")
+        return cached_filename
+
+    except Exception as e:
+        print(f"Failed to cache image for {person_name}: {e}")
+        return None
+
+
 def process_linkedin_csv(df):
     """Process LinkedIn CSV format into standard format."""
     df["name"] = df["Name"].fillna("") if "Name" in df.columns else ""
@@ -111,7 +168,15 @@ def process_linkedin_csv(df):
         df["location"] = ""
 
     df["headline"] = df["linkedinHeadline"].fillna("") if "linkedinHeadline" in df.columns else ""
-    df["profile_image_url"] = df["linkedinProfileImageUrl"].fillna("") if "linkedinProfileImageUrl" in df.columns else ""
+
+    # Store original LinkedIn image URLs
+    if "linkedinProfileImageUrl" in df.columns:
+        df["linkedin_image_url"] = df["linkedinProfileImageUrl"].fillna("")
+    else:
+        df["linkedin_image_url"] = ""
+
+    # Initialize profile_image_url column (will be populated with cached filenames)
+    df["profile_image_url"] = ""
 
     def build_companies_list(row):
         companies = []
@@ -184,7 +249,7 @@ def load_alumni_data():
     # Remove empty rows
     df = df[df["name"].str.strip() != ""]
 
-    # Custom image mappings for specific alumni
+    # Custom image mappings for specific alumni (these are local assets, not cached)
     custom_images = {
         "Aadit Bennur": "/assets/Aadit.jpeg"
     }
@@ -193,6 +258,21 @@ def load_alumni_data():
     for name, image_path in custom_images.items():
         df.loc[df["name"].str.contains(name, case=False, na=False), "profile_image_url"] = image_path
 
+    # Cache LinkedIn profile images
+    print("Caching profile images...")
+    for idx, row in df.iterrows():
+        # Skip if already has custom image
+        if row["profile_image_url"] and str(row["profile_image_url"]).startswith("/assets/"):
+            continue
+
+        # Try to cache the LinkedIn image
+        linkedin_image = row.get("linkedin_image_url", "")
+        if linkedin_image and str(linkedin_image).strip() not in ['', 'nan', 'null', 'None']:
+            cached_filename = download_and_cache_image(linkedin_image, row["name"])
+            if cached_filename:
+                df.at[idx, "profile_image_url"] = cached_filename
+
+    print(f"Image caching complete. Total alumni: {len(df)}")
     return df
 
 
@@ -276,9 +356,23 @@ def get_filters():
         }), 500
 
 
+@app.route('/api/cached-image/<filename>', methods=['GET'])
+def get_cached_image(filename):
+    """Serve cached profile images."""
+    try:
+        image_path = os.path.join(CACHE_DIR, filename)
+        if os.path.exists(image_path):
+            return send_file(image_path, mimetype='image/jpeg')
+        else:
+            return jsonify({'error': 'Image not found'}), 404
+    except Exception as e:
+        print(f"Error serving cached image: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/proxy-image', methods=['GET'])
 def proxy_image():
-    """Proxy LinkedIn images to bypass CORS restrictions."""
+    """Legacy proxy endpoint - kept for backward compatibility."""
     try:
         image_url = request.args.get('url')
         if not image_url:
