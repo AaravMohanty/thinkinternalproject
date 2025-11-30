@@ -76,6 +76,64 @@ function populateFilterSelects() {
   filterIndustrySelect.innerHTML = filterOptions.industries
     .map(industry => `<option value="${industry}">${industry}</option>`)
     .join('');
+
+  // Setup search functionality for dropdowns
+  setupFilterSearch();
+}
+
+// Setup search functionality for filter dropdowns
+function setupFilterSearch() {
+  const searchMajor = document.getElementById('searchMajor');
+  const searchYear = document.getElementById('searchYear');
+  const searchCompany = document.getElementById('searchCompany');
+  const searchIndustry = document.getElementById('searchIndustry');
+
+  if (searchMajor) {
+    searchMajor.addEventListener('input', (e) => {
+      filterSelectOptions(filterMajorSelect, e.target.value, filterOptions.majors);
+    });
+  }
+
+  if (searchYear) {
+    searchYear.addEventListener('input', (e) => {
+      filterSelectOptions(filterYearSelect, e.target.value, filterOptions.years);
+    });
+  }
+
+  if (searchCompany) {
+    searchCompany.addEventListener('input', (e) => {
+      filterSelectOptions(filterCompanySelect, e.target.value, filterOptions.companies);
+    });
+  }
+
+  if (searchIndustry) {
+    searchIndustry.addEventListener('input', (e) => {
+      filterSelectOptions(filterIndustrySelect, e.target.value, filterOptions.industries);
+    });
+  }
+}
+
+// Filter options in a select element based on search query
+function filterSelectOptions(selectElement, query, allOptions) {
+  const lowerQuery = query.toLowerCase().trim();
+  const selectedValues = Array.from(selectElement.selectedOptions).map(opt => opt.value);
+
+  // If query is empty, show all options
+  const filteredOptions = lowerQuery === ''
+    ? allOptions
+    : allOptions.filter(option => option.toString().toLowerCase().includes(lowerQuery));
+
+  selectElement.innerHTML = filteredOptions
+    .map(option => {
+      const isSelected = selectedValues.includes(option);
+      return `<option value="${option}" ${isSelected ? 'selected' : ''}>${option}</option>`;
+    })
+    .join('');
+
+  // Show "No results" message if no options found
+  if (filteredOptions.length === 0) {
+    selectElement.innerHTML = '<option disabled>No results found</option>';
+  }
 }
 
 // Load all alumni data
@@ -233,22 +291,40 @@ function renderAlumni() {
 
 // Create alumni card HTML
 function createAlumniCard(alumni) {
-  const profileImage = alumni.profile_image_url || alumni.linkedinProfileImageUrl || '';
+  const profileImage = alumni.profile_image_url || '';
+  const linkedinImage = alumni.linkedin_image_url || alumni.linkedinProfileImageUrl || '';
   const fallbackLogo = 'assets/Copy of P Logo for dark background (1).png';
 
-  // Check if it's a local asset or external URL
-  const isLocalImage = profileImage && String(profileImage).startsWith('/assets/');
-  const isExternalImage = profileImage && profileImage !== 'nan' && profileImage !== 'null' && String(profileImage).trim().startsWith('http');
-  const hasImage = isLocalImage || isExternalImage;
+  // Check image type:
+  // 1. Supabase URL (full https:// URL from Supabase Storage)
+  // 2. Local asset (starts with /assets/)
+  // 3. Local cached filename (hash.jpg format)
+  // 4. LinkedIn URL (for proxy fallback)
+  const isSupabaseUrl = profileImage && String(profileImage).startsWith('https://') &&
+                        String(profileImage).includes('supabase');
+  const isLocalAsset = profileImage && String(profileImage).startsWith('/assets/');
+  const isLocalCachedFile = profileImage && String(profileImage).trim() &&
+                            !String(profileImage).startsWith('http') &&
+                            !String(profileImage).startsWith('/assets/') &&
+                            profileImage !== 'nan' && profileImage !== 'null';
+  const isLinkedInUrl = !isSupabaseUrl && !isLocalAsset && !isLocalCachedFile && linkedinImage &&
+                        String(linkedinImage).startsWith('http') &&
+                        linkedinImage !== 'nan' && linkedinImage !== 'null';
 
-  // Build image HTML - local images don't need proxy
-  // IMPORTANT: Don't use innerHTML in onerror as it wipes out the contact icons!
+  // Build image HTML
   let imageHTML;
-  if (isLocalImage) {
+  if (isSupabaseUrl) {
+    // Supabase Storage URL - use directly
+    imageHTML = `<img src="${profileImage}" alt="${alumni.name}" class="card-image" onerror="this.onerror=null; this.style.display='none'; var fallback=document.createElement('div'); fallback.className='card-image-fallback'; fallback.innerHTML='<img src=\\'${fallbackLogo}\\' alt=\\'PurdueTHINK Logo\\' />'; this.parentElement.insertBefore(fallback, this);">`;
+  } else if (isLocalAsset) {
     const localPath = profileImage.substring(1); // Remove leading slash
     imageHTML = `<img src="${localPath}" alt="${alumni.name}" class="card-image" onerror="this.onerror=null; this.style.display='none'; var fallback=document.createElement('div'); fallback.className='card-image-fallback'; fallback.innerHTML='<img src=\\'${fallbackLogo}\\' alt=\\'PurdueTHINK Logo\\' />'; this.parentElement.insertBefore(fallback, this);">`;
-  } else if (isExternalImage) {
-    const proxiedImage = `${API_BASE_URL}/proxy-image?url=${encodeURIComponent(profileImage)}`;
+  } else if (isLocalCachedFile) {
+    // Legacy local cache - use cached-image endpoint
+    const cachedImageUrl = `${API_BASE_URL}/cached-image/${profileImage}`;
+    imageHTML = `<img src="${cachedImageUrl}" alt="${alumni.name}" class="card-image" onerror="this.onerror=null; this.style.display='none'; var fallback=document.createElement('div'); fallback.className='card-image-fallback'; fallback.innerHTML='<img src=\\'${fallbackLogo}\\' alt=\\'PurdueTHINK Logo\\' />'; this.parentElement.insertBefore(fallback, this);">`;
+  } else if (isLinkedInUrl) {
+    const proxiedImage = `${API_BASE_URL}/proxy-image?url=${encodeURIComponent(linkedinImage)}`;
     imageHTML = `<img src="${proxiedImage}" alt="${alumni.name}" class="card-image" onerror="this.onerror=null; this.style.display='none'; var fallback=document.createElement('div'); fallback.className='card-image-fallback'; fallback.innerHTML='<img src=\\'${fallbackLogo}\\' alt=\\'PurdueTHINK Logo\\' />'; this.parentElement.insertBefore(fallback, this);">`;
   } else {
     imageHTML = `<div class="card-image-fallback"><img src="${fallbackLogo}" alt="PurdueTHINK Logo" /></div>`;

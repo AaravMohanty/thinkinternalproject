@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Your Profile - THINKedIn</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/global.css">
+  <style>
+    .onboarding-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--spacing-lg);
+    }
+
+    .onboarding-card {
+      background: rgba(31, 41, 55, 0.6);
+      backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-lg);
+      padding: 48px;
+      width: 100%;
+      max-width: 600px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    .onboarding-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .onboarding-title {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .onboarding-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* Progress steps */
+    .progress-steps {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 40px;
+      position: relative;
+    }
+
+    .progress-line {
+      position: absolute;
+      top: 20px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.1);
+      z-index: 0;
+    }
+
+    .progress-line-fill {
+      height: 100%;
+      background: var(--primary-color);
+      transition: width 0.3s;
+      width: 0%;
+    }
+
+    .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .step-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(31, 41, 55, 0.8);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: var(--text-secondary);
+      transition: all 0.3s;
+    }
+
+    .step.active .step-circle {
+      background: var(--primary-color);
+      border-color: var(--primary-color);
+      color: white;
+    }
+
+    .step.completed .step-circle {
+      background: rgba(34, 197, 94, 0.2);
+      border-color: #22c55e;
+      color: #22c55e;
+    }
+
+    .step-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* Form sections */
+    .form-section {
+      display: none;
+    }
+
+    .form-section.active {
+      display: block;
+      animation: fadeIn 0.3s;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .form-input, .form-textarea {
+      width: 100%;
+      padding: 14px 16px;
+      background: rgba(31, 41, 55, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 15px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      background: rgba(31, 41, 55, 0.6);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    /* File upload */
+    .upload-area {
+      border: 2px dashed rgba(255, 255, 255, 0.2);
+      border-radius: var(--radius-md);
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .upload-area:hover {
+      border-color: var(--primary-color);
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .file-name {
+      display: none;
+      margin-top: 12px;
+      color: var(--primary-color);
+      font-size: 14px;
+    }
+
+    .file-name.show {
+      display: block;
+    }
+
+    /* Buttons */
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-color), #2563eb);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .message {
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .error-message {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.6s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="onboarding-container">
+    <div class="onboarding-card">
+      <div class="onboarding-header">
+        <h1 class="onboarding-title">Complete Your Profile</h1>
+        <p class="onboarding-subtitle">Help us personalize your experience</p>
+      </div>
+
+      <!-- Progress Steps -->
+      <div class="progress-steps">
+        <div class="progress-line">
+          <div class="progress-line-fill" id="progressFill"></div>
+        </div>
+        <div class="step active" data-step="1">
+          <div class="step-circle">1</div>
+          <div class="step-label">Resume</div>
+        </div>
+        <div class="step" data-step="2">
+          <div class="step-circle">2</div>
+          <div class="step-label">Profile</div>
+        </div>
+      </div>
+
+      <!-- Error Message -->
+      <div id="errorMessage" class="message error-message"></div>
+
+      <!-- Step 1: Resume Upload -->
+      <div class="form-section active" id="step1">
+        <div class="form-group">
+          <label class="form-label">Upload Your Resume (Optional)</label>
+          <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📄</div>
+            <div>
+              <strong>Click to upload</strong> or drag and drop<br>
+              <small style="color: var(--text-secondary)">PDF only, max 5MB</small>
+            </div>
+            <input type="file" id="resumeFile" accept=".pdf" hidden>
+            <div class="file-name" id="fileName"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Profile Info -->
+      <div class="form-section" id="step2">
+        <div class="form-group">
+          <label for="major" class="form-label">Major *</label>
+          <input type="text" id="major" class="form-input" placeholder="Computer Science" required>
+        </div>
+
+        <div class="form-group">
+          <label for="graduationYear" class="form-label">Graduation Year *</label>
+          <input type="number" id="graduationYear" class="form-input" placeholder="2025" min="1950" max="2030" required>
+        </div>
+
+        <div class="form-group">
+          <label for="currentCompany" class="form-label">Current Company (Optional)</label>
+          <input type="text" id="currentCompany" class="form-input" placeholder="Company name">
+        </div>
+
+        <div class="form-group">
+          <label for="currentTitle" class="form-label">Current Title (Optional)</label>
+          <input type="text" id="currentTitle" class="form-input" placeholder="Software Engineer">
+        </div>
+
+        <div class="form-group">
+          <label for="linkedinUrl" class="form-label">LinkedIn URL (Optional)</label>
+          <input type="url" id="linkedinUrl" class="form-input" placeholder="https://linkedin.com/in/yourprofile">
+        </div>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <button type="button" id="backBtn" class="btn btn-secondary" style="display: none;">Back</button>
+        <button type="button" id="nextBtn" class="btn btn-primary">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="scripts/auth.js"></script>
+  <script>
+    // Check authentication
+    if (!Auth.isAuthenticated()) {
+      window.location.href = 'auth.html';
+    }
+
+    const API_BASE_URL = 'http://localhost:5001';
+    let currentStep = 1;
+    let uploadedResume = null;
+
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const backBtn = document.getElementById('backBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const errorMessage = document.getElementById('errorMessage');
+    const uploadArea = document.getElementById('uploadArea');
+    const resumeFile = document.getElementById('resumeFile');
+    const fileName = document.getElementById('fileName');
+
+    // File upload
+    uploadArea.addEventListener('click', () => resumeFile.click());
+
+    resumeFile.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        if (file.type !== 'application/pdf') {
+          showError('Please upload a PDF file');
+          return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          showError('File size must be less than 5MB');
+          return;
+        }
+        uploadedResume = file;
+        fileName.textContent = `📎 ${file.name}`;
+        fileName.classList.add('show');
+      }
+    });
+
+    // Navigation
+    nextBtn.addEventListener('click', async () => {
+      clearError();
+
+      if (currentStep === 1) {
+        // Upload resume if provided
+        if (uploadedResume) {
+          nextBtn.disabled = true;
+          nextBtn.innerHTML = '<span class="loading-spinner"></span>Uploading...';
+
+          const formData = new FormData();
+          formData.append('resume', uploadedResume);
+
+          try {
+            const response = await fetch(`${API_BASE_URL}/api/resume/upload`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${Auth.getToken()}`
+              },
+              body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.parsed_data) {
+              // Pre-fill form with parsed data
+              if (data.parsed_data.major) document.getElementById('major').value = data.parsed_data.major;
+              if (data.parsed_data.graduation_year) document.getElementById('graduationYear').value = data.parsed_data.graduation_year;
+              if (data.parsed_data.work_experience && data.parsed_data.work_experience[0]) {
+                const latest = data.parsed_data.work_experience[0];
+                if (latest.company) document.getElementById('currentCompany').value = latest.company;
+                if (latest.title) document.getElementById('currentTitle').value = latest.title;
+              }
+            }
+          } catch (error) {
+            console.error('Resume upload error:', error);
+          }
+
+          nextBtn.disabled = false;
+          nextBtn.textContent = 'Next';
+        }
+
+        // Move to step 2
+        currentStep = 2;
+        updateUI();
+      } else if (currentStep === 2) {
+        // Save profile and complete onboarding
+        await completeOnboarding();
+      }
+    });
+
+    backBtn.addEventListener('click', () => {
+      currentStep = 1;
+      updateUI();
+    });
+
+    async function completeOnboarding() {
+      const major = document.getElementById('major').value.trim();
+      const graduationYear = document.getElementById('graduationYear').value;
+
+      if (!major || !graduationYear) {
+        showError('Please fill in required fields (Major and Graduation Year)');
+        return;
+      }
+
+      nextBtn.disabled = true;
+      nextBtn.innerHTML = '<span class="loading-spinner"></span>Completing...';
+
+      try {
+        // Update profile
+        const response = await fetch(`${API_BASE_URL}/api/profile`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${Auth.getToken()}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            major,
+            graduation_year: parseInt(graduationYear),
+            current_company: document.getElementById('currentCompany').value.trim() || null,
+            current_title: document.getElementById('currentTitle').value.trim() || null,
+            linkedin_url: document.getElementById('linkedinUrl').value.trim() || null,
+            onboarding_completed: true
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // Update local user data
+          const userData = Auth.getUserData();
+          if (userData) {
+            userData.profile.onboarding_completed = true;
+            Auth.setUserData(userData);
+          }
+
+          // Redirect to home
+          window.location.href = 'home.html';
+        } else {
+          showError(data.error || 'Failed to save profile');
+          nextBtn.disabled = false;
+          nextBtn.textContent = 'Complete';
+        }
+      } catch (error) {
+        console.error('Profile save error:', error);
+        showError('Failed to save profile. Please try again.');
+        nextBtn.disabled = false;
+        nextBtn.textContent = 'Complete';
+      }
+    }
+
+    function updateUI() {
+      // Update steps
+      document.querySelectorAll('.step').forEach((step, index) => {
+        step.classList.remove('active', 'completed');
+        if (index + 1 < currentStep) {
+          step.classList.add('completed');
+        } else if (index + 1 === currentStep) {
+          step.classList.add('active');
+        }
+      });
+
+      // Update progress line
+      const progress = ((currentStep - 1) / 1) * 100;
+      document.getElementById('progressFill').style.width = progress + '%';
+
+      // Update sections
+      step1.classList.toggle('active', currentStep === 1);
+      step2.classList.toggle('active', currentStep === 2);
+
+      // Update buttons
+      backBtn.style.display = currentStep === 1 ? 'none' : 'block';
+      nextBtn.textContent = currentStep === 1 ? 'Next' : 'Complete';
+    }
+
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.classList.add('show');
+    }
+
+    function clearError() {
+      errorMessage.classList.remove('show');
+    }
+  </script>
+</body>
+</html>

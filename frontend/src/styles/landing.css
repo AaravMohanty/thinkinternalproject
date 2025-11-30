@@ -1,0 +1,425 @@
+/*
+ * Landing Page Styles
+ * Modern 3D Sphere Design
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+.landing-page {
+  min-height: 100vh;
+  width: 100%;
+  background: linear-gradient(135deg, #030305 0%, #08080f 50%, #050508 100%);
+  position: relative;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.landing-page.visible {
+  opacity: 1;
+}
+
+/* Background Light Rays */
+.landing-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.light-ray {
+  position: absolute;
+  background: linear-gradient(180deg, rgba(64, 117, 201, 0.08) 0%, transparent 100%);
+  transform-origin: top left;
+}
+
+.ray-1 {
+  width: 600px;
+  height: 150%;
+  top: -20%;
+  left: -10%;
+  transform: rotate(25deg);
+}
+
+.ray-2 {
+  width: 400px;
+  height: 120%;
+  top: -10%;
+  left: 5%;
+  transform: rotate(35deg);
+  opacity: 0.5;
+}
+
+/* Navigation */
+.landing-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 60px;
+  z-index: 100;
+}
+
+.landing-nav-left {
+  display: flex;
+  align-items: center;
+}
+
+.landing-logo {
+  height: 36px;
+  width: auto;
+}
+
+.landing-nav-right {
+  display: flex;
+  align-items: center;
+}
+
+.landing-nav-btn {
+  background: transparent;
+  border: 1px solid rgba(196, 191, 192, 0.3);
+  color: #C4BFC0;
+  padding: 10px 24px;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.landing-nav-btn:hover {
+  background: rgba(64, 117, 201, 0.1);
+  border-color: #4075C9;
+  color: #fff;
+}
+
+/* Main Content Layout */
+.landing-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 100vh;
+  padding: 0 60px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Left Content */
+.landing-left {
+  flex: 0 0 300px;
+  z-index: 10;
+}
+
+.landing-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  color: #C4BFC0;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.landing-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 72px;
+  font-weight: 400;
+  color: #ffffff;
+  line-height: 1;
+  margin: 0 0 24px 0;
+}
+
+.landing-divider {
+  width: 40px;
+  height: 2px;
+  background: #C4BFC0;
+  margin-bottom: 24px;
+}
+
+.landing-description {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 300;
+  color: #C4BFC0;
+  line-height: 1.7;
+  margin-bottom: 32px;
+}
+
+.landing-cta-btn {
+  background: transparent;
+  border: 1px solid rgba(196, 191, 192, 0.4);
+  color: #ffffff;
+  padding: 14px 32px;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.landing-cta-btn:hover {
+  background: rgba(64, 117, 201, 0.15);
+  border-color: #4075C9;
+  box-shadow: 0 4px 20px rgba(64, 117, 201, 0.2);
+}
+
+/* 3D Sphere Container */
+.landing-sphere-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.sphere-3d {
+  width: 450px;
+  height: 450px;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: sphereFloat 8s ease-in-out infinite;
+}
+
+@keyframes sphereFloat {
+  0%, 100% {
+    transform: translateY(0) rotateY(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotateY(10deg);
+  }
+}
+
+/* Sphere Layers */
+.sphere-layer {
+  position: absolute;
+  border-radius: 50%;
+  transform-style: preserve-3d;
+}
+
+.layer-1 {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at 30% 30%, #2a5090 0%, #1a3a6e 50%, #0d1f3c 100%);
+  box-shadow:
+    inset -30px -30px 60px rgba(0, 0, 0, 0.5),
+    inset 20px 20px 50px rgba(64, 117, 201, 0.25),
+    0 0 120px rgba(64, 117, 201, 0.35),
+    0 0 60px rgba(100, 149, 237, 0.2);
+}
+
+.layer-2 {
+  width: 95%;
+  height: 85%;
+  top: 5%;
+  left: 2%;
+  background: linear-gradient(135deg, transparent 35%, rgba(64, 117, 201, 0.55) 55%, rgba(64, 117, 201, 0.2) 100%);
+  transform: rotateX(-15deg) rotateY(-20deg) translateZ(20px);
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+}
+
+.layer-3 {
+  width: 88%;
+  height: 75%;
+  top: 10%;
+  left: 6%;
+  background: linear-gradient(145deg, transparent 25%, rgba(100, 149, 237, 0.5) 50%, rgba(64, 117, 201, 0.25) 100%);
+  transform: rotateX(-20deg) rotateY(-25deg) translateZ(40px);
+  border-radius: 50% 50% 50% 50% / 55% 55% 45% 45%;
+}
+
+.layer-4 {
+  width: 80%;
+  height: 65%;
+  top: 15%;
+  left: 10%;
+  background: linear-gradient(150deg, transparent 20%, rgba(135, 180, 255, 0.45) 45%, rgba(64, 117, 201, 0.2) 100%);
+  transform: rotateX(-25deg) rotateY(-30deg) translateZ(60px);
+  border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%;
+}
+
+.layer-5 {
+  width: 70%;
+  height: 55%;
+  top: 20%;
+  left: 15%;
+  background: linear-gradient(155deg, transparent 15%, rgba(170, 200, 255, 0.4) 40%, rgba(100, 149, 237, 0.2) 100%);
+  transform: rotateX(-30deg) rotateY(-35deg) translateZ(80px);
+  border-radius: 50% 50% 50% 50% / 45% 45% 55% 55%;
+}
+
+.layer-6 {
+  width: 58%;
+  height: 45%;
+  top: 26%;
+  left: 21%;
+  background: linear-gradient(160deg, transparent 10%, rgba(200, 220, 255, 0.35) 35%, rgba(135, 180, 255, 0.15) 100%);
+  transform: rotateX(-35deg) rotateY(-40deg) translateZ(100px);
+  border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+}
+
+.layer-7 {
+  width: 44%;
+  height: 35%;
+  top: 32%;
+  left: 28%;
+  background: linear-gradient(165deg, transparent 5%, rgba(220, 235, 255, 0.3) 30%, rgba(170, 200, 255, 0.12) 100%);
+  transform: rotateX(-40deg) rotateY(-45deg) translateZ(120px);
+  border-radius: 50% 50% 50% 50% / 35% 35% 65% 65%;
+}
+
+.layer-8 {
+  width: 28%;
+  height: 22%;
+  top: 40%;
+  left: 36%;
+  background: linear-gradient(170deg, rgba(240, 248, 255, 0.4) 0%, rgba(220, 235, 255, 0.2) 50%, transparent 100%);
+  transform: rotateX(-45deg) rotateY(-50deg) translateZ(140px);
+  border-radius: 50%;
+  box-shadow: 0 0 40px rgba(255, 255, 255, 0.2);
+}
+
+/* Right Content */
+.landing-right {
+  flex: 0 0 280px;
+  text-align: right;
+  z-index: 10;
+}
+
+.feature-icon {
+  color: #C4BFC0;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.feature-count {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: rgba(196, 191, 192, 0.5);
+  display: block;
+  margin-bottom: 12px;
+}
+
+.feature-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: #ffffff;
+  margin: 0 0 16px 0;
+}
+
+.feature-description {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  color: #C4BFC0;
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+
+.feature-nav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.nav-arrow {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(196, 191, 192, 0.3);
+  background: transparent;
+  color: #C4BFC0;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-arrow:hover {
+  border-color: #4075C9;
+  color: #fff;
+  background: rgba(64, 117, 201, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .landing-main {
+    padding: 0 40px;
+  }
+
+  .sphere-3d {
+    width: 380px;
+    height: 380px;
+  }
+
+  .landing-title {
+    font-size: 56px;
+  }
+}
+
+@media (max-width: 992px) {
+  .landing-main {
+    flex-direction: column;
+    justify-content: center;
+    gap: 40px;
+    padding: 120px 40px 60px;
+  }
+
+  .landing-left,
+  .landing-right {
+    flex: none;
+    text-align: center;
+  }
+
+  .landing-right {
+    text-align: center;
+  }
+
+  .feature-icon,
+  .feature-nav {
+    justify-content: center;
+  }
+
+  .landing-divider {
+    margin: 0 auto 24px;
+  }
+
+  .sphere-3d {
+    width: 320px;
+    height: 320px;
+  }
+}
+
+@media (max-width: 576px) {
+  .landing-nav {
+    padding: 16px 24px;
+  }
+
+  .landing-main {
+    padding: 100px 24px 40px;
+  }
+
+  .landing-title {
+    font-size: 42px;
+  }
+
+  .sphere-3d {
+    width: 260px;
+    height: 260px;
+  }
+
+  .landing-cta-btn {
+    padding: 12px 28px;
+  }
+}

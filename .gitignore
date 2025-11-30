@@ -1,3 +1,8 @@
+# Node
+node_modules/
+frontend/node_modules/
+frontend-react/node_modules/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -47,3 +52,6 @@ Thumbs.db
 
 # Data (uncomment if you want to exclude local data)
 # data/alumni.csv
+
+# Cached images
+backend/cached_images/

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - THINKedIn</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/global.css">
+  <style>
+    /* Login-specific styles */
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+      padding: var(--spacing-lg);
+    }
+
+    .login-card {
+      background: rgba(31, 41, 55, 0.6);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-lg);
+      padding: 48px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .login-logo {
+      height: 48px;
+      width: auto;
+      margin-bottom: 16px;
+    }
+
+    .login-title {
+      font-size: 32px;
+      font-weight: 900;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .login-subtitle {
+      font-size: 14px;
+      color: var(--text-tertiary);
+      font-weight: 500;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 15px;
+      font-family: var(--font-family);
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      color: var(--text-primary);
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--color-primary);
+      background: rgba(0, 0, 0, 0.4);
+      box-shadow: 0 0 0 3px rgba(64, 117, 201, 0.1);
+    }
+
+    .form-input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .submit-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #4075C9 0%, #2a5699 100%);
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 15px;
+      padding: 16px;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 24px rgba(64, 117, 201, 0.4);
+      margin-top: 8px;
+    }
+
+    .submit-btn:hover:not(:disabled) {
+      transform: scale(1.02) translateY(-2px);
+      box-shadow: 0 12px 32px rgba(64, 117, 201, 0.6);
+      background: linear-gradient(135deg, #5085d9 0%, #3a66a9 100%);
+    }
+
+    .submit-btn:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .form-footer {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .form-footer-text {
+      font-size: 14px;
+      color: var(--text-tertiary);
+    }
+
+    .form-footer-link {
+      color: var(--color-primary);
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .form-footer-link:hover {
+      color: #5085d9;
+      opacity: 1;
+    }
+
+    .error-message {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 20px;
+      display: none;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .error-message.show {
+      display: block;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Background shapes for login page */
+    .login-bg-shape {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.1;
+      animation: float 30s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .login-bg-shape-1 {
+      width: 600px;
+      height: 600px;
+      background: linear-gradient(135deg, #4075C9 0%, #1a3a5e 50%, #0a1929 100%);
+      top: 10%;
+      right: -10%;
+      animation-delay: 0s;
+    }
+
+    .login-bg-shape-2 {
+      width: 500px;
+      height: 500px;
+      background: linear-gradient(135deg, #C4BFC0 0%, #4075C9 50%, #1a1a1a 100%);
+      bottom: 10%;
+      left: -8%;
+      animation-delay: -10s;
+    }
+  </style>
+</head>
+<body>
+  <!-- Background shapes -->
+  <div class="login-bg-shape login-bg-shape-1"></div>
+  <div class="login-bg-shape login-bg-shape-2"></div>
+
+  <!-- Login Container -->
+  <div class="login-container">
+    <div class="login-card">
+      <!-- Header -->
+      <div class="login-header">
+        <img src="assets/Copy of P logo for white backgrounds.png" alt="PurdueTHINK Logo" class="login-logo" onerror="this.style.display='none'">
+        <h1 class="login-title">Welcome Back</h1>
+        <p class="login-subtitle">Sign in to access THINKedIn</p>
+      </div>
+
+      <!-- Error Message -->
+      <div id="errorMessage" class="error-message"></div>
+
+      <!-- Login Form -->
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email" class="form-label">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            class="form-input"
+            placeholder="your.email@purdue.edu"
+            required
+            autocomplete="email"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="form-input"
+            placeholder="Enter your password"
+            required
+            autocomplete="current-password"
+          >
+        </div>
+
+        <div style="text-align: right; margin-bottom: 16px;">
+          <a href="forgot-password.html" style="color: var(--text-secondary); font-size: 13px; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='var(--primary-color)'" onmouseout="this.style.color='var(--text-secondary)'">
+            Forgot password?
+          </a>
+        </div>
+
+        <button type="submit" id="submitBtn" class="submit-btn">
+          Sign In
+        </button>
+      </form>
+
+      <!-- Footer -->
+      <div class="form-footer">
+        <p class="form-footer-text">
+          Don't have an account?
+          <a href="signup.html" class="form-footer-link">Sign up</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth utility script -->
+  <script src="scripts/auth.js"></script>
+
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const errorMessage = document.getElementById('errorMessage');
+
+    // Redirect to new auth page
+    window.location.href = 'auth.html';
+
+    // Auto-fill email if passed in URL (from signup redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    const emailParam = urlParams.get('email');
+    if (emailParam) {
+      document.getElementById('email').value = emailParam;
+      // Focus on password field
+      document.getElementById('password').focus();
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      // Clear previous error
+      errorMessage.classList.remove('show');
+      errorMessage.textContent = '';
+
+      // Validate inputs
+      if (!email || !password) {
+        showError('Please enter both email and password');
+        return;
+      }
+
+      // Disable submit button and show loading
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="loading-spinner"></span>Signing in...';
+
+      try {
+        const result = await Auth.login(email, password);
+
+        if (result.success) {
+          // Redirect to home page
+          window.location.href = 'home.html';
+        } else {
+          showError(result.error || 'Login failed. Please try again.');
+          resetButton();
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        showError('An unexpected error occurred. Please try again.');
+        resetButton();
+      }
+    });
+
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.classList.add('show');
+    }
+
+    function resetButton() {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Sign In';
+    }
+  </script>
+</body>
+</html>

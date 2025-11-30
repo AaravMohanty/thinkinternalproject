@@ -1,0 +1,731 @@
+/* Onboarding Page Styles - Matching UI Style Guide */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+/* ===== PAGE CONTAINER ===== */
+.onboarding-page {
+  min-height: 100vh;
+  width: 100%;
+  background: linear-gradient(135deg, #030305 0%, #08080f 50%, #050508 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ===== BACKGROUND LIGHT RAYS ===== */
+.onboarding-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.onboarding-bg .light-ray {
+  position: absolute;
+  background: linear-gradient(180deg, rgba(64, 117, 201, 0.08) 0%, transparent 100%);
+}
+
+.onboarding-bg .ray-1 {
+  width: 600px;
+  height: 150%;
+  top: -30%;
+  left: -10%;
+  transform: rotate(25deg);
+}
+
+.onboarding-bg .ray-2 {
+  width: 400px;
+  height: 120%;
+  top: -20%;
+  right: -5%;
+  transform: rotate(-20deg);
+  background: linear-gradient(180deg, rgba(64, 117, 201, 0.05) 0%, transparent 100%);
+}
+
+/* ===== MAIN CARD ===== */
+.onboarding-card {
+  background: rgba(3, 3, 5, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 48px;
+  width: 100%;
+  max-width: 560px;
+  position: relative;
+  z-index: 1;
+  transition: max-width 0.3s ease;
+}
+
+.onboarding-card.wide {
+  max-width: 900px;
+}
+
+/* ===== HEADER ===== */
+.onboarding-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.onboarding-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  color: #C4BFC0;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.onboarding-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 36px;
+  font-weight: 400;
+  color: #ffffff;
+  line-height: 1.2;
+  margin: 0 0 16px 0;
+}
+
+.onboarding-divider {
+  width: 40px;
+  height: 2px;
+  background: #C4BFC0;
+  margin: 0 auto 16px;
+}
+
+.onboarding-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 300;
+  color: #C4BFC0;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ===== PROGRESS STEPS ===== */
+.onboarding-progress {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 40px;
+  position: relative;
+}
+
+.onboarding-progress-line {
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.onboarding-progress-fill {
+  height: 100%;
+  background: #4075C9;
+  transition: width 0.3s ease;
+}
+
+.onboarding-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.onboarding-step-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.onboarding-step-circle.active {
+  background: #4075C9;
+  border: 2px solid #4075C9;
+  color: #ffffff;
+}
+
+.onboarding-step-circle.completed {
+  background: rgba(34, 197, 94, 0.2);
+  border: 2px solid #22c55e;
+  color: #22c55e;
+}
+
+.onboarding-step-circle.pending {
+  background: rgba(3, 3, 5, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  color: #C4BFC0;
+}
+
+.onboarding-step-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #C4BFC0;
+}
+
+/* ===== ERROR & SUCCESS MESSAGES ===== */
+.onboarding-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 24px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+}
+
+.onboarding-success {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #86efac;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 24px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+}
+
+/* ===== RESUME UPLOAD SECTION ===== */
+.onboarding-upload-label {
+  display: block;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #ffffff;
+  margin-bottom: 12px;
+}
+
+.onboarding-upload-zone {
+  border: 2px dashed rgba(64, 117, 201, 0.3);
+  border-radius: 8px;
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: rgba(64, 117, 201, 0.02);
+}
+
+.onboarding-upload-zone:hover {
+  border-color: rgba(64, 117, 201, 0.5);
+  background: rgba(64, 117, 201, 0.05);
+}
+
+.onboarding-upload-zone.has-file {
+  border-color: #4075C9;
+  background: rgba(64, 117, 201, 0.08);
+}
+
+.onboarding-upload-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  background: rgba(64, 117, 201, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboarding-upload-icon svg {
+  width: 32px;
+  height: 32px;
+  color: #4075C9;
+}
+
+.onboarding-upload-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.onboarding-upload-text span {
+  color: #4075C9;
+  font-weight: 500;
+}
+
+.onboarding-upload-hint {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #C4BFC0;
+}
+
+.onboarding-upload-file {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #4075C9;
+}
+
+.onboarding-upload-file svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ===== FORM FIELDS ===== */
+.onboarding-form-group {
+  margin-bottom: 20px;
+}
+
+.onboarding-form-label {
+  display: block;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #C4BFC0;
+  margin-bottom: 8px;
+}
+
+.onboarding-form-label .required {
+  color: #4075C9;
+}
+
+.onboarding-form-input {
+  width: 100%;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(196, 191, 192, 0.2);
+  border-radius: 4px;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.onboarding-form-input::placeholder {
+  color: rgba(196, 191, 192, 0.5);
+}
+
+.onboarding-form-input:focus {
+  outline: none;
+  border-color: #4075C9;
+  background: rgba(64, 117, 201, 0.05);
+  box-shadow: 0 0 0 3px rgba(64, 117, 201, 0.1);
+}
+
+.onboarding-form-hint {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #C4BFC0;
+  margin-top: 6px;
+}
+
+/* ===== BUTTONS ===== */
+.onboarding-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.onboarding-btn {
+  flex: 1;
+  padding: 16px 24px;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.onboarding-btn-primary {
+  background: transparent;
+  border: 1px solid rgba(196, 191, 192, 0.4);
+  color: #ffffff;
+}
+
+.onboarding-btn-primary:hover:not(:disabled) {
+  background: rgba(64, 117, 201, 0.15);
+  border-color: #4075C9;
+  box-shadow: 0 4px 20px rgba(64, 117, 201, 0.2);
+}
+
+.onboarding-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.onboarding-btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #C4BFC0;
+}
+
+.onboarding-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+/* ===== LOADING SPINNER ===== */
+.onboarding-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  animation: onboarding-spin 0.6s linear infinite;
+}
+
+@keyframes onboarding-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== WELCOME MESSAGE (NO MATCHES) ===== */
+.onboarding-welcome {
+  text-align: center;
+  padding: 32px 0;
+}
+
+.onboarding-welcome-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  background: rgba(64, 117, 201, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+}
+
+.onboarding-welcome h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 500;
+  color: #ffffff;
+  margin: 0 0 8px 0;
+}
+
+.onboarding-welcome p {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  color: #C4BFC0;
+  margin: 0;
+}
+
+/* ===== MATCH CARDS GRID ===== */
+.onboarding-matches-grid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  margin-bottom: 24px;
+}
+
+.onboarding-matches-grid.single {
+  grid-template-columns: 1fr;
+  max-width: 320px;
+  margin: 0 auto 24px;
+}
+
+.onboarding-none-btn {
+  display: block;
+  margin: 0 auto;
+  padding: 12px 24px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #C4BFC0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.onboarding-none-btn:hover {
+  border-color: rgba(64, 117, 201, 0.5);
+  color: #ffffff;
+}
+
+/* ===== MATCH CARD ===== */
+.match-card {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 380px;
+}
+
+.match-card.selectable {
+  cursor: pointer;
+}
+
+.match-card.selectable:hover {
+  transform: translateY(-6px);
+  border-color: rgba(64, 117, 201, 0.3);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(64, 117, 201, 0.2);
+}
+
+.match-card-image-section {
+  position: relative;
+  height: 65%;
+  width: 100%;
+  background: #000;
+  overflow: hidden;
+}
+
+.match-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.match-card.selectable:hover .match-card-image {
+  transform: scale(1.05);
+}
+
+.match-card-image-fallback {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.match-card-image-fallback img {
+  max-width: 50%;
+  max-height: 50%;
+  object-fit: contain;
+  opacity: 0.4;
+}
+
+.match-card-gradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.5) 30%, #000000 100%);
+  pointer-events: none;
+}
+
+.match-card-body {
+  flex: 1;
+  width: 100%;
+  padding: 20px;
+  background: #000000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: flex-start;
+  position: relative;
+  margin-top: -1px;
+}
+
+.match-card-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+.match-card.selectable:hover .match-card-name {
+  color: #4075C9;
+}
+
+.match-card-role {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-card-company {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-card-info {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 4px 0 0 0;
+}
+
+.match-card-select-hint {
+  position: absolute;
+  bottom: 12px;
+  right: 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: rgba(64, 117, 201, 0.8);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.match-card.selectable:hover .match-card-select-hint {
+  opacity: 1;
+}
+
+/* ===== CONFIRMATION MODAL ===== */
+.onboarding-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.onboarding-modal {
+  background: rgba(3, 3, 5, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 420px;
+  width: 100%;
+}
+
+.onboarding-modal-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 500;
+  color: #ffffff;
+  text-align: center;
+  margin: 0 0 12px 0;
+}
+
+.onboarding-modal-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  color: #C4BFC0;
+  text-align: center;
+  margin: 0 0 24px 0;
+}
+
+.onboarding-modal-text strong {
+  color: #ffffff;
+}
+
+.onboarding-modal-preview {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.onboarding-modal-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #000;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.onboarding-modal-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.onboarding-modal-avatar img.fallback {
+  object-fit: contain;
+  padding: 12px;
+  opacity: 0.5;
+}
+
+.onboarding-modal-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.onboarding-modal-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 4px 0;
+}
+
+.onboarding-modal-detail {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #C4BFC0;
+  margin: 0;
+}
+
+.onboarding-modal-warning {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #fbbf24;
+  text-align: center;
+  margin: 0 0 24px 0;
+}
+
+.onboarding-modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .onboarding-card {
+    padding: 32px 24px;
+  }
+
+  .onboarding-title {
+    font-size: 28px;
+  }
+
+  .onboarding-matches-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .match-card {
+    height: 340px;
+  }
+}
