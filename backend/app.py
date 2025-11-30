@@ -12,6 +12,7 @@ from io import StringIO
 import os
 import hashlib
 from pathlib import Path
+import google.generativeai as genai
 
 # Import config and authentication services
 try:
@@ -38,6 +39,22 @@ except ImportError as e:
     print("Running in legacy mode without authentication")
     AUTH_ENABLED = False
     SUPABASE_STORAGE_ENABLED = False
+
+# Initialize Gemini AI model once at startup for faster responses
+gemini_model = None
+if AUTH_ENABLED:
+    try:
+        genai.configure(api_key=config.GEMINI_API_KEY)
+        gemini_model = genai.GenerativeModel(
+            config.GEMINI_MODEL,
+            generation_config=genai.GenerationConfig(
+                temperature=0.7,
+                max_output_tokens=500,  # Limit output for faster generation
+            )
+        )
+        print(f"[INFO] Gemini AI initialized with model: {config.GEMINI_MODEL}")
+    except Exception as e:
+        print(f"[WARNING] Failed to initialize Gemini: {e}")
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend access
@@ -2007,19 +2024,12 @@ if AUTH_ENABLED:
     @app.route('/api/generate-email', methods=['POST'])
     @require_auth
     def generate_email(current_user):
-        """Generate a personalized networking email using AI.
-
-        Request body:
-            alumni: dict - Alumni data (name, company, role, etc.)
-
-        Returns generated email text.
-        """
+        """Generate a personalized networking email using AI."""
         try:
-            import sys
-            import google.generativeai as genai
-            from config import GEMINI_API_KEY, GEMINI_MODEL
+            global gemini_model
 
-            print(f"[DEBUG] generate_email called, GEMINI_MODEL={GEMINI_MODEL}", flush=True)
+            if not gemini_model:
+                return jsonify({'error': 'AI service not available'}), 503
 
             data = request.get_json() or {}
             alumni_data = data.get('alumni', {})
@@ -2028,111 +2038,43 @@ if AUTH_ENABLED:
                 return jsonify({'error': 'Alumni data required'}), 400
 
             # Get user's profile
-            profile_response = supabase.table('user_profiles').select('*').eq(
-                'user_id', current_user['user_id']
-            ).execute()
+            profile_response = supabase.table('user_profiles').select(
+                'full_name, major, graduation_year, email_template'
+            ).eq('user_id', current_user['user_id']).execute()
 
             if not profile_response.data:
                 return jsonify({'error': 'User profile not found'}), 404
 
             user_profile = profile_response.data[0]
 
-            # Get user's custom template or use default
-            custom_template = (user_profile.get('email_template') or '').strip()
-
-            # Default template structure
-            default_template = """Hi {alumni_name},
-
-I hope this message finds you well. My name is {user_name}, and I'm a {user_major} student at Purdue University{grad_info}. I came across your profile through THINK and was really impressed by your career journey.
-
-I'm particularly interested in learning more about your experience at {company}{role_mention}. {interest_line}
-
-Would you be open to a brief phone call or virtual coffee chat? I'd love to hear about your path and any advice you might have for someone interested in this field.
-
-Thank you for your time, and I look forward to hearing from you.
-
-Best regards,
-{user_name}"""
-
-            # Build context for the AI
+            # Extract data
             alumni_name = alumni_data.get('name', 'there')
             alumni_first_name = alumni_name.split()[0] if alumni_name else 'there'
             company = alumni_data.get('company') or alumni_data.get('company_name') or 'your company'
             role = alumni_data.get('role_title') or alumni_data.get('headline') or ''
-            industry = alumni_data.get('company_industry') or ''
 
             user_name = user_profile.get('full_name', 'A THINK Member')
             user_first_name = user_name.split()[0] if user_name else 'A THINK Member'
             user_major = user_profile.get('major', 'a student')
             user_grad_year = user_profile.get('graduation_year')
-            user_interests = user_profile.get('career_interests', [])
-            user_target_industries = user_profile.get('target_industries', [])
-            user_bio = user_profile.get('bio', '')
 
-            # Configure Gemini
-            genai.configure(api_key=GEMINI_API_KEY)
-            model = genai.GenerativeModel(GEMINI_MODEL)
+            # Concise prompt for faster generation
+            prompt = f"""Write a short networking email (under 120 words).
 
-            # Build the prompt
-            if custom_template:
-                # User has custom template - use it as the base
-                prompt = f"""You are helping write a professional networking email. The user has provided a custom template.
-Use their template as a guide but personalize it with the specific details provided.
+From: {user_name}, {user_major} student at Purdue{f', Class of {user_grad_year}' if user_grad_year else ''}
+To: {alumni_name}, {role + ' at ' if role else ''}{company}
 
-USER'S CUSTOM TEMPLATE:
-{custom_template}
+Requirements:
+- Start with "Hi {alumni_first_name},"
+- Briefly introduce yourself
+- Express interest in their career/company
+- Request a quick call or coffee chat
+- Sign off with just "{user_first_name}"
 
-SENDER INFO:
-- Name: {user_name}
-- Major: {user_major}
-- Graduation Year: {user_grad_year or 'Current student'}
-- Career Interests: {', '.join(user_interests) if user_interests else 'Not specified'}
-- Bio: {user_bio or 'Not provided'}
-
-RECIPIENT INFO:
-- Name: {alumni_name}
-- Company: {company}
-- Role/Title: {role or 'Not specified'}
-- Industry: {industry or 'Not specified'}
-
-Write a personalized email based on the template. Replace placeholders like NAME with actual names.
-Keep it professional but warm. Make it feel genuine, not generic.
-Output ONLY the email text, no explanations or markdown."""
-            else:
-                # Use default template with AI enhancement
-                prompt = f"""Write a professional networking email from a college student to an alumni.
-
-SENDER INFO:
-- Name: {user_name}
-- Major: {user_major}
-- University: Purdue University
-- Graduation Year: {user_grad_year or 'Current student'}
-- Career Interests: {', '.join(user_interests) if user_interests else 'Exploring career options'}
-- Target Industries: {', '.join(user_target_industries) if user_target_industries else 'Various'}
-- Bio: {user_bio or 'Eager to learn and connect'}
-
-RECIPIENT INFO:
-- Name: {alumni_name}
-- Company: {company}
-- Role/Title: {role or 'Professional'}
-- Industry: {industry or 'Not specified'}
-
-TEMPLATE TO FOLLOW (personalize it):
-{default_template}
-
-Instructions:
-1. Start with "Hi {alumni_first_name},"
-2. Introduce the sender naturally
-3. Show genuine interest in the recipient's company or role - be specific if possible
-4. Ask for a brief call or chat
-5. Keep it concise (under 150 words)
-6. Be professional but warm and genuine
-7. End with the sender's first name only
-
-Output ONLY the email text, no explanations or markdown."""
+Output ONLY the email text."""
 
             # Generate the email
-            response = model.generate_content(prompt)
+            response = gemini_model.generate_content(prompt)
             generated_email = response.text.strip()
 
             # Clean up any markdown artifacts
