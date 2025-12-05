@@ -303,8 +303,17 @@ const OnboardingPage = () => {
 
         {/* Progress */}
         <div className="onboarding-progress">
-          <div className="onboarding-progress-line">
-            <div className="onboarding-progress-fill" style={{ width: `${progress}%` }}></div>
+          <div className="onboarding-progress-line-segment onboarding-progress-line-1">
+            <div 
+              className={`onboarding-progress-fill ${currentStep >= 3 ? 'completed' : ''}`}
+              style={{ width: currentStep >= 2 ? '100%' : '0%' }}
+            ></div>
+          </div>
+          <div className="onboarding-progress-line-segment onboarding-progress-line-2">
+            <div 
+              className="onboarding-progress-fill" 
+              style={{ width: currentStep >= 3 ? '100%' : '0%' }}
+            ></div>
           </div>
           {[1, 2, 3].map((step) => (
             <div key={step} className="onboarding-step">
