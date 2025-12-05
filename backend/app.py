@@ -46,12 +46,13 @@ if AUTH_ENABLED:
     app.config['SECRET_KEY'] = config.FLASK_SECRET_KEY
 
 # Google Drive configuration
-GOOGLE_DRIVE_FILE_ID = "1-ZPmzBu6xat2qQxOti2vg7ricaAlzkn_"
+GOOGLE_DRIVE_FILE_ID = "17nWOQo424w0W6GCTsdP2UxbHQpuQXO5G"
 GOOGLE_DRIVE_URL = f"https://drive.google.com/uc?export=download&id={GOOGLE_DRIVE_FILE_ID}"
 
 # Fallback data directory
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
-ALUMNI_CSV = "/Users/sreekargudipati/Coding Projects/THINKInternalProject/gdrive_alumni.csv"
+# Use relative path so it works for all users
+ALUMNI_CSV = os.path.join(os.path.dirname(__file__), "..", "gdrive_alumni.csv")
 
 # Image cache directory
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "cached_images")
@@ -214,29 +215,32 @@ def process_linkedin_csv(df):
     # Initialize profile_image_url column and populate with cached image URLs
     df["profile_image_url"] = ""
 
-    # Look up cached images - use fast Supabase URL generation
-    # Frontend handles fallback if image doesn't exist
-    def get_cached_image_url(image_url):
-        if not image_url or str(image_url).strip() in ['', 'nan', 'null', 'None']:
+    # Use pre-computed Supabase URLs from CSV if available (preferred method)
+    # This ensures consistent URLs regardless of which CSV source is used
+    if "supabaseProfileImageUrl" in df.columns:
+        df["profile_image_url"] = df["supabaseProfileImageUrl"].fillna("")
+    elif "linkedinProfileImageUrl" in df.columns:
+        # Fallback: compute Supabase URL from LinkedIn URL (legacy method)
+        def get_cached_image_url(image_url):
+            if not image_url or str(image_url).strip() in ['', 'nan', 'null', 'None']:
+                return ""
+
+            # Use Supabase Storage - fast path (no verification to avoid 640+ API calls)
+            # The caching script pre-populates Supabase, frontend handles fallback
+            if SUPABASE_STORAGE_ENABLED:
+                # verify_exists=False is fast - just generates expected URL
+                supabase_url = get_supabase_image_url(str(image_url), verify_exists=False)
+                if supabase_url:
+                    return supabase_url
+
+            # Fallback to local cache (legacy)
+            image_hash = get_image_hash(str(image_url))
+            for ext in ['.jpg', '.jpeg', '.png', '.webp']:
+                cached_path = os.path.join(CACHE_DIR, f"{image_hash}{ext}")
+                if os.path.exists(cached_path):
+                    return f"{image_hash}{ext}"
             return ""
 
-        # Use Supabase Storage - fast path (no verification to avoid 640+ API calls)
-        # The caching script pre-populates Supabase, frontend handles fallback
-        if SUPABASE_STORAGE_ENABLED:
-            # verify_exists=False is fast - just generates expected URL
-            supabase_url = get_supabase_image_url(str(image_url), verify_exists=False)
-            if supabase_url:
-                return supabase_url
-
-        # Fallback to local cache (legacy)
-        image_hash = get_image_hash(str(image_url))
-        for ext in ['.jpg', '.jpeg', '.png', '.webp']:
-            cached_path = os.path.join(CACHE_DIR, f"{image_hash}{ext}")
-            if os.path.exists(cached_path):
-                return f"{image_hash}{ext}"
-        return ""
-
-    if "linkedinProfileImageUrl" in df.columns:
         df["profile_image_url"] = df["linkedinProfileImageUrl"].apply(get_cached_image_url)
 
     def build_companies_list(row):
