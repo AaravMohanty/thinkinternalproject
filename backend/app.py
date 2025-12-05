@@ -1114,6 +1114,144 @@ if AUTH_ENABLED:
             return jsonify({'success': False, 'error': f'Failed to upload resume: {str(e)}'}), 500
 
 
+    @app.route('/api/profile/upload-image', methods=['POST'])
+    @require_auth
+    def upload_profile_image(current_user):
+        """Upload profile picture"""
+        try:
+            from werkzeug.utils import secure_filename
+            from PIL import Image
+            import io
+
+            print(f"[PROFILE IMAGE UPLOAD] User: {current_user.get('user_id')}")
+            print(f"[PROFILE IMAGE UPLOAD] Files in request: {list(request.files.keys())}")
+
+            # Check if file was uploaded
+            if 'image' not in request.files:
+                print("[PROFILE IMAGE UPLOAD] Error: No image file in request")
+                return jsonify({'error': 'No image file provided'}), 400
+
+            file = request.files['image']
+
+            if file.filename == '':
+                print("[PROFILE IMAGE UPLOAD] Error: Empty filename")
+                return jsonify({'error': 'No file selected'}), 400
+
+            # Validate file type
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+
+            if file_ext not in allowed_extensions:
+                return jsonify({'error': 'Only image files (PNG, JPG, JPEG, GIF, WEBP) are allowed'}), 400
+
+            # Validate file size (max 5MB)
+            file.seek(0, os.SEEK_END)
+            file_size = file.tell()
+            file.seek(0)
+
+            if file_size > 5 * 1024 * 1024:  # 5MB
+                return jsonify({'error': 'File size exceeds 5MB limit'}), 400
+
+            # Read and validate image
+            try:
+                image = Image.open(file)
+                image.verify()
+                file.seek(0)  # Reset after verify
+                image = Image.open(file)  # Reopen after verify
+            except Exception as e:
+                return jsonify({'error': 'Invalid image file'}), 400
+
+            # Convert to RGB if necessary (for JPEG compatibility)
+            if image.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', image.size, (255, 255, 255))
+                if image.mode == 'P':
+                    image = image.convert('RGBA')
+                background.paste(image, mask=image.split()[-1] if image.mode == 'RGBA' else None)
+                image = background
+
+            # Resize image to reasonable dimensions (max 800x800) to save storage
+            max_size = (800, 800)
+            image.thumbnail(max_size, Image.Resampling.LANCZOS)
+
+            # Convert to JPEG and compress
+            img_byte_arr = io.BytesIO()
+            image.save(img_byte_arr, format='JPEG', quality=85, optimize=True)
+            img_byte_arr.seek(0)
+
+            # Generate filename
+            filename = secure_filename(f"{current_user['user_id']}_profile.jpg")
+            print(f"[PROFILE IMAGE UPLOAD] Generated filename: {filename}")
+
+            # Delete old profile image if exists
+            try:
+                print("[PROFILE IMAGE UPLOAD] Attempting to list existing files...")
+                existing_files = supabase.storage.from_('profile-images').list()
+                print(f"[PROFILE IMAGE UPLOAD] Found {len(existing_files)} files in bucket")
+                for f in existing_files:
+                    if f['name'].startswith(f"{current_user['user_id']}_"):
+                        print(f"[PROFILE IMAGE UPLOAD] Removing old file: {f['name']}")
+                        supabase.storage.from_('profile-images').remove([f['name']])
+            except Exception as e:
+                print(f"[PROFILE IMAGE UPLOAD] Error removing old profile image: {e}")
+                print(f"[PROFILE IMAGE UPLOAD] Error type: {type(e).__name__}")
+                import traceback
+                traceback.print_exc()
+
+            # Upload to Supabase storage bucket 'profile-images'
+            try:
+                print(f"[PROFILE IMAGE UPLOAD] Uploading to profile-images bucket...")
+                storage_response = supabase.storage.from_('profile-images').upload(
+                    filename,
+                    img_byte_arr.getvalue(),
+                    file_options={"content-type": "image/jpeg", "upsert": "true"}
+                )
+                print(f"[PROFILE IMAGE UPLOAD] Upload response: {storage_response}")
+            except Exception as e:
+                print(f"[PROFILE IMAGE UPLOAD] Storage upload error: {e}")
+                print(f"[PROFILE IMAGE UPLOAD] Error type: {type(e).__name__}")
+                import traceback
+                traceback.print_exc()
+                # If upload fails due to existing file, try updating instead
+                try:
+                    print(f"[PROFILE IMAGE UPLOAD] Trying update instead...")
+                    supabase.storage.from_('profile-images').update(
+                        filename,
+                        img_byte_arr.getvalue(),
+                        file_options={"content-type": "image/jpeg"}
+                    )
+                    print(f"[PROFILE IMAGE UPLOAD] Update successful")
+                except Exception as e2:
+                    print(f"[PROFILE IMAGE UPLOAD] Storage update error: {e2}")
+                    print(f"[PROFILE IMAGE UPLOAD] Update error type: {type(e2).__name__}")
+                    import traceback
+                    traceback.print_exc()
+                    return jsonify({'error': f'Failed to upload image to storage: {str(e2)}'}), 500
+
+            # Get public URL
+            image_url = supabase.storage.from_('profile-images').get_public_url(filename)
+            print(f"[PROFILE IMAGE UPLOAD] Generated public URL: {image_url}")
+
+            # Update user profile with image URL
+            print(f"[PROFILE IMAGE UPLOAD] Updating user profile...")
+            supabase.table('user_profiles').update({
+                'profile_image_url': image_url
+            }).eq('user_id', current_user['user_id']).execute()
+
+            print(f"[PROFILE IMAGE UPLOAD] Success!")
+            return jsonify({
+                'success': True,
+                'message': 'Profile image uploaded successfully',
+                'image_url': image_url
+            }), 200
+
+        except Exception as e:
+            print(f"[PROFILE IMAGE UPLOAD] FATAL ERROR: {e}")
+            print(f"[PROFILE IMAGE UPLOAD] Error type: {type(e).__name__}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': f'Failed to upload profile image: {str(e)}'}), 500
+
+
     @app.route('/api/match-profile', methods=['POST'])
     @require_auth
     def match_profile(current_user):

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { profileAPI } from '../utils/api';
 import ProfileDropdown from '../components/ProfileDropdown';
+import Cropper from 'react-easy-crop';
 import '../styles/people.css';
 
 const ProfilePage = () => {
@@ -14,6 +15,13 @@ const ProfilePage = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [uploadedProfilePic, setUploadedProfilePic] = useState(null);
+
+  // Image cropping state
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
   // Delete account state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -140,6 +148,77 @@ const ProfilePage = () => {
     }
   };
 
+  // Helper function to create cropped image
+  const createCroppedImage = async (imageSrc, croppedAreaPixels) => {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = imageSrc;
+    });
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = croppedAreaPixels.width;
+    canvas.height = croppedAreaPixels.height;
+
+    ctx.drawImage(
+      image,
+      croppedAreaPixels.x,
+      croppedAreaPixels.y,
+      croppedAreaPixels.width,
+      croppedAreaPixels.height,
+      0,
+      0,
+      croppedAreaPixels.width,
+      croppedAreaPixels.height
+    );
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        resolve(blob);
+      }, 'image/jpeg', 0.95);
+    });
+  };
+
+  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleCropSave = async () => {
+    try {
+      const croppedBlob = await createCroppedImage(imageToCrop, croppedAreaPixels);
+      const croppedFile = new File([croppedBlob], 'profile.jpg', { type: 'image/jpeg' });
+
+      // Set the cropped image as the profile pic
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfilePicUrl(e.target.result);
+      };
+      reader.readAsDataURL(croppedFile);
+      setUploadedProfilePic(croppedFile);
+
+      // Close the crop modal
+      setShowCropModal(false);
+      setImageToCrop(null);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCroppedAreaPixels(null);
+    } catch (error) {
+      console.error('Error cropping image:', error);
+      setMessage({ type: 'error', text: 'Failed to crop image' });
+    }
+  };
+
+  const handleCropCancel = () => {
+    setShowCropModal(false);
+    setImageToCrop(null);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCroppedAreaPixels(null);
+  };
+
   const handleProfilePicUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -156,10 +235,10 @@ const ProfilePage = () => {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      setProfilePicUrl(e.target.result);
+      setImageToCrop(e.target.result);
+      setShowCropModal(true);
     };
     reader.readAsDataURL(file);
-    setUploadedProfilePic(file);
   };
 
   const handleSave = async () => {
@@ -170,6 +249,31 @@ const ProfilePage = () => {
 
     setSaving(true);
     try {
+      // Upload profile picture first if one was selected
+      let imageUploadSuccess = true;
+      if (uploadedProfilePic) {
+        try {
+          const imageResult = await profileAPI.uploadProfileImage(uploadedProfilePic);
+          if (imageResult.success) {
+            // Update the profile pic URL in the UI
+            setProfilePicUrl(imageResult.image_url);
+          } else {
+            imageUploadSuccess = false;
+            setMessage({ type: 'error', text: imageResult.error || 'Failed to upload profile picture' });
+          }
+        } catch (imageError) {
+          console.error('Error uploading profile image:', imageError);
+          imageUploadSuccess = false;
+          setMessage({ type: 'error', text: 'Failed to upload profile picture' });
+        }
+      }
+
+      // Only continue with profile update if image upload succeeded (or no image was uploaded)
+      if (!imageUploadSuccess) {
+        setSaving(false);
+        return;
+      }
+
       const careerInterests = formData.careerInterests
         ? formData.careerInterests.split(',').map(i => i.trim()).filter(i => i)
         : [];
@@ -595,6 +699,62 @@ const ProfilePage = () => {
           </div>
         </div>
       </main>
+
+      {/* Image Crop Modal */}
+      {showCropModal && (
+        <div className="modal-overlay">
+          <div className="crop-modal">
+            <h2 className="modal-title">Adjust Your Photo</h2>
+            <p className="modal-description">Drag to reposition and use the slider to zoom</p>
+
+            <div className="crop-container">
+              <Cropper
+                image={imageToCrop}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape="round"
+                showGrid={false}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+              />
+            </div>
+
+            <div className="crop-controls">
+              <div className="zoom-control">
+                <label className="zoom-label">Zoom</label>
+                <input
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  value={zoom}
+                  onChange={(e) => setZoom(parseFloat(e.target.value))}
+                  className="zoom-slider"
+                />
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn-modal-cancel"
+                onClick={handleCropCancel}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-modal-save"
+                onClick={handleCropSave}
+              >
+                Save Photo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Account Modal */}
       {showDeleteModal && (
@@ -1290,6 +1450,98 @@ const ProfilePage = () => {
           background: rgba(239, 68, 68, 0.2);
           border-color: rgba(239, 68, 68, 0.5);
           color: #f87171;
+        }
+
+        /* ===== CROP MODAL ===== */
+        .crop-modal {
+          background: linear-gradient(135deg, #0a0a12 0%, #08080f 100%);
+          border: 1px solid rgba(64, 117, 201, 0.3);
+          border-radius: 16px;
+          padding: 32px;
+          max-width: 600px;
+          width: 100%;
+          text-align: center;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .crop-container {
+          position: relative;
+          width: 100%;
+          height: 400px;
+          background: #000000;
+          border-radius: 8px;
+          overflow: hidden;
+          margin: 24px 0;
+        }
+
+        .crop-controls {
+          margin-bottom: 24px;
+        }
+
+        .zoom-control {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          align-items: stretch;
+        }
+
+        .zoom-label {
+          font-family: 'Inter', sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          color: #C4BFC0;
+          text-align: left;
+        }
+
+        .zoom-slider {
+          width: 100%;
+          height: 6px;
+          border-radius: 3px;
+          background: rgba(255, 255, 255, 0.1);
+          outline: none;
+          -webkit-appearance: none;
+          appearance: none;
+        }
+
+        .zoom-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: #4075C9;
+          cursor: pointer;
+          border: 2px solid #ffffff;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .zoom-slider::-moz-range-thumb {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: #4075C9;
+          cursor: pointer;
+          border: 2px solid #ffffff;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-modal-save {
+          flex: 1;
+          background: rgba(64, 117, 201, 0.15);
+          color: #ffffff;
+          border: 1px solid #4075C9;
+          padding: 14px 24px;
+          border-radius: 4px;
+          font-family: 'Inter', sans-serif;
+          font-weight: 500;
+          font-size: 14px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .btn-modal-save:hover {
+          background: rgba(64, 117, 201, 0.25);
+          border-color: rgba(64, 117, 201, 0.6);
         }
 
         /* ===== DELETE MODAL ===== */
