@@ -4,21 +4,28 @@ The exclusive alumni networking platform for Purdue THINK members. Connect, lear
 
 ## Quick Start
 
-### After Pulling Latest Changes
+### One-Time Setup for Auto-Updates ⚡
 
-Run the update script to automatically install all dependencies:
+Run this **ONCE** after cloning to enable automatic dependency installation:
 
 **Mac/Linux:**
 ```bash
-./update.sh
+./setup-hooks.sh
 ```
 
 **Windows:**
 ```bash
-update.bat
+setup-hooks.bat
 ```
 
-This will automatically install all new dependencies for both frontend and backend!
+After this setup, **every time you `git pull`**, dependencies will automatically install if they changed! 🚀
+
+#### Manual Update (if you prefer)
+If you don't want auto-updates, you can manually run:
+```bash
+./update.sh     # Mac/Linux
+update.bat      # Windows
+```
 
 ### Prerequisites
 - Python 3.10+

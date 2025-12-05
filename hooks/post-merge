@@ -1,0 +1,27 @@
+#!/bin/bash
+# Post-merge hook - runs automatically after git pull/merge
+# Automatically installs dependencies when requirements change
+
+echo ""
+echo "🔍 Checking for dependency changes..."
+
+# Check if requirements.txt changed
+if git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD | grep --quiet "backend/requirements.txt"; then
+    echo "📦 Backend dependencies changed, installing..."
+    cd backend
+    pip install -r requirements.txt
+    cd ..
+    echo "✅ Backend dependencies updated"
+fi
+
+# Check if package.json changed
+if git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD | grep --quiet "frontend/package.json"; then
+    echo "📦 Frontend dependencies changed, installing..."
+    cd frontend
+    npm install
+    cd ..
+    echo "✅ Frontend dependencies updated"
+fi
+
+echo "✅ Repository up to date!"
+echo ""
