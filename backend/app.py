@@ -46,12 +46,13 @@ if AUTH_ENABLED:
     app.config['SECRET_KEY'] = config.FLASK_SECRET_KEY
 
 # Google Drive configuration
-GOOGLE_DRIVE_FILE_ID = "1-ZPmzBu6xat2qQxOti2vg7ricaAlzkn_"
+GOOGLE_DRIVE_FILE_ID = "17nWOQo424w0W6GCTsdP2UxbHQpuQXO5G"
 GOOGLE_DRIVE_URL = f"https://drive.google.com/uc?export=download&id={GOOGLE_DRIVE_FILE_ID}"
 
 # Fallback data directory
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
-ALUMNI_CSV = "/Users/sreekargudipati/Coding Projects/THINKInternalProject/gdrive_alumni.csv"
+# Use relative path so it works for all users
+ALUMNI_CSV = os.path.join(os.path.dirname(__file__), "..", "gdrive_alumni.csv")
 
 # Image cache directory
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "cached_images")

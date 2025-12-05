@@ -58,8 +58,8 @@ from services.storage import (
     get_public_url
 )
 
-# Path to the CSV file
-CSV_PATH = "/Users/sreekargudipati/Coding Projects/THINKInternalProject/gdrive_alumni.csv"
+# Path to the CSV file (relative to project root)
+CSV_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "gdrive_alumni.csv")
 
 
 def load_alumni_data():
