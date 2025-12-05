@@ -113,19 +113,31 @@
   position: relative;
 }
 
-.onboarding-progress-line {
+.onboarding-progress-line-segment {
   position: absolute;
   top: 20px;
-  left: 0;
-  right: 0;
   height: 2px;
   background: rgba(255, 255, 255, 0.1);
+}
+
+.onboarding-progress-line-1 {
+  left: 40px;
+  right: calc(50% + 20px);
+}
+
+.onboarding-progress-line-2 {
+  left: calc(50% + 20px);
+  right: 40px;
 }
 
 .onboarding-progress-fill {
   height: 100%;
   background: #4075C9;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.onboarding-progress-fill.completed {
+  background: #22c55e;
 }
 
 .onboarding-step {
@@ -135,6 +147,7 @@
   gap: 8px;
   position: relative;
   z-index: 1;
+  width: 40px;
 }
 
 .onboarding-step-circle {
