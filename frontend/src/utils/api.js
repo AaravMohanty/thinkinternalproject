@@ -215,6 +215,22 @@ export const profileAPI = {
     return response.json();
   },
 
+  async uploadProfileImage(file) {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const token = getToken();
+    const response = await fetch(`${API_BASE_URL}/api/profile/upload-image`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    return response.json();
+  },
+
   // Search for potential matching alumni profiles in CSV data
   async matchProfile(fullName, email) {
     return apiRequest('/api/match-profile', {
