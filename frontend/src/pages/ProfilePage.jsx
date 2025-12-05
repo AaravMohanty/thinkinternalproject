@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { profileAPI } from '../utils/api';
 import ProfileDropdown from '../components/ProfileDropdown';
@@ -418,10 +418,10 @@ const ProfilePage = () => {
 
       {/* Navigation */}
       <nav className="main-nav">
-        <div className="nav-left">
+        <Link to="/" className="nav-left">
           <img src="/assets/Copy of P logo for medium or dark background (1).png" alt="PurdueTHINK" className="nav-logo" />
           <span className="nav-title">THINKedIn</span>
-        </div>
+        </Link>
         <div className="nav-right">
           <a href="/" className="nav-link" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Alumni</a>
           {user?.profile?.is_director && (

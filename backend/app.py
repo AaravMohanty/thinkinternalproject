@@ -1557,16 +1557,13 @@ if AUTH_ENABLED:
         """Delete the current user's own account.
 
         This permanently deletes the user's profile and authentication data.
+        IMPORTANT: Auth user is deleted FIRST to ensure email can be re-used.
         """
         try:
             user_id = current_user['user_id']
             print(f"Deleting account for user_id: {user_id}")
 
-            # Delete the user profile first
-            profile_delete = supabase_admin.table('user_profiles').delete().eq('user_id', user_id).execute()
-            print(f"Profile delete result: {profile_delete}")
-
-            # Delete the user from auth (requires admin client)
+            # 1. Delete the user from auth FIRST (most important - allows email re-use)
             try:
                 auth_delete = supabase_admin.auth.admin.delete_user(user_id)
                 print(f"Auth delete result: {auth_delete}")
@@ -1574,7 +1571,6 @@ if AUTH_ENABLED:
                 print(f"Auth delete error: {auth_error}")
                 # Try alternative method if the first fails
                 try:
-                    # Some versions of supabase-py use different syntax
                     supabase_admin.auth.admin.delete_user(uid=user_id)
                 except Exception as e2:
                     print(f"Alternative auth delete also failed: {e2}")
@@ -1582,6 +1578,23 @@ if AUTH_ENABLED:
                         'success': False,
                         'error': f'Failed to delete auth user: {str(auth_error)}'
                     }), 500
+
+            # 2. Delete chat sessions (messages will CASCADE)
+            try:
+                supabase_admin.table('chat_sessions').delete().eq('user_id', user_id).execute()
+            except Exception as chat_error:
+                print(f"Warning: Could not delete chat sessions: {chat_error}")
+
+            # 3. Delete connections where user is either side
+            try:
+                supabase_admin.table('connections').delete().eq('user_id', user_id).execute()
+                supabase_admin.table('connections').delete().eq('target_user_id', user_id).execute()
+            except Exception as conn_error:
+                print(f"Warning: Could not delete connections: {conn_error}")
+
+            # 4. Delete the user profile
+            profile_delete = supabase_admin.table('user_profiles').delete().eq('user_id', user_id).execute()
+            print(f"Profile delete result: {profile_delete}")
 
             return jsonify({
                 'success': True,
@@ -1767,7 +1780,26 @@ if AUTH_ENABLED:
             except Exception as img_error:
                 print(f"Warning: Could not delete profile images: {img_error}")
 
-            # 3. Delete chat sessions explicitly (messages will CASCADE)
+            # 3. Delete from auth FIRST (most important - allows email re-use)
+            # This must succeed before we delete other data
+            try:
+                supabase_admin.auth.admin.delete_user(user_id)
+                deleted_items.append("auth account")
+                print(f"Deleted auth account for user {user_id}")
+            except Exception as auth_error:
+                print(f"Auth delete error: {auth_error}")
+                # Try alternative method
+                try:
+                    supabase_admin.auth.admin.delete_user(uid=user_id)
+                    deleted_items.append("auth account")
+                except Exception as e2:
+                    print(f"Alternative auth delete also failed: {e2}")
+                    return jsonify({
+                        'success': False,
+                        'error': f'Failed to delete auth user: {str(auth_error)}'
+                    }), 500
+
+            # 4. Delete chat sessions explicitly (messages will CASCADE)
             try:
                 chat_delete = supabase_admin.table('chat_sessions').delete().eq('user_id', user_id).execute()
                 if chat_delete.data:
@@ -1775,7 +1807,7 @@ if AUTH_ENABLED:
             except Exception as chat_error:
                 print(f"Warning: Could not delete chat sessions: {chat_error}")
 
-            # 4. Delete connections where user is either side
+            # 5. Delete connections where user is either side
             try:
                 conn_delete_1 = supabase_admin.table('connections').delete().eq('user_id', user_id).execute()
                 conn_delete_2 = supabase_admin.table('connections').delete().eq('target_user_id', user_id).execute()
@@ -1785,13 +1817,9 @@ if AUTH_ENABLED:
             except Exception as conn_error:
                 print(f"Warning: Could not delete connections: {conn_error}")
 
-            # 5. Delete the user profile
+            # 6. Delete the user profile
             supabase_admin.table('user_profiles').delete().eq('user_id', user_id).execute()
             deleted_items.append("user profile")
-
-            # 6. Delete from auth (this is the main account deletion)
-            supabase_admin.auth.admin.delete_user(user_id)
-            deleted_items.append("auth account")
 
             # Log the action with details of what was deleted
             log_admin_action(

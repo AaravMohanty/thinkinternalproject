@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { adminAPI } from '../utils/api';
 import ProfileDropdown from '../components/ProfileDropdown';
@@ -172,10 +172,10 @@ const AdminPage = () => {
           <div className="light-ray ray-2"></div>
         </div>
         <nav className="main-nav">
-          <div className="nav-left">
+          <Link to="/" className="nav-left">
             <img src="/assets/Copy of P logo for medium or dark background (1).png" alt="PurdueTHINK" className="nav-logo" />
             <span className="nav-title">THINKedIn</span>
-          </div>
+          </Link>
           <div className="nav-right">
             <a href="/" className="nav-link" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Alumni</a>
             <a href="/admin" className="nav-link active" onClick={(e) => { e.preventDefault(); navigate('/admin'); }}>Admin</a>
@@ -203,10 +203,10 @@ const AdminPage = () => {
 
       {/* Navigation */}
       <nav className="main-nav">
-        <div className="nav-left">
+        <Link to="/" className="nav-left">
           <img src="/assets/Copy of P logo for medium or dark background (1).png" alt="PurdueTHINK" className="nav-logo" />
           <span className="nav-title">THINKedIn</span>
-        </div>
+        </Link>
         <div className="nav-right">
           <a href="/" className="nav-link" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Alumni</a>
           <a href="/admin" className="nav-link active" onClick={(e) => { e.preventDefault(); navigate('/admin'); }}>Admin</a>

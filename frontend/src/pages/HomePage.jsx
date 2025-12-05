@@ -475,10 +475,10 @@ const HomePage = () => {
 
       {/* Navigation */}
       <nav className="main-nav">
-        <div className="nav-left">
+        <Link to="/" className="nav-left">
           <img src="/assets/Copy of P logo for medium or dark background (1).png" alt="PurdueTHINK" className="nav-logo" />
           <span className="nav-title">THINKedIn</span>
-        </div>
+        </Link>
         <div className="nav-right">
           <Link to="/" className="nav-link active">Alumni</Link>
           {user?.profile?.is_director && (
