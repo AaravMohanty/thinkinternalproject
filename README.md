@@ -4,6 +4,22 @@ The exclusive alumni networking platform for Purdue THINK members. Connect, lear
 
 ## Quick Start
 
+### After Pulling Latest Changes
+
+Run the update script to automatically install all dependencies:
+
+**Mac/Linux:**
+```bash
+./update.sh
+```
+
+**Windows:**
+```bash
+update.bat
+```
+
+This will automatically install all new dependencies for both frontend and backend!
+
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
