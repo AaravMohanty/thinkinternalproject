@@ -40,7 +40,10 @@ except ImportError as e:
     SUPABASE_STORAGE_ENABLED = False
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend access
+
+# CORS configuration - allow frontend origins
+ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5173').split(',')
+CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=True)  # Enable CORS for frontend access
 
 if AUTH_ENABLED:
     app.config['SECRET_KEY'] = config.FLASK_SECRET_KEY
