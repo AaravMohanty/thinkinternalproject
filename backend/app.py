@@ -1141,6 +1141,7 @@ if AUTH_ENABLED:
         try:
             from werkzeug.utils import secure_filename
             from PIL import Image
+            from services.storage import upload_image_to_supabase, get_public_url
             import io
 
             print(f"[PROFILE IMAGE UPLOAD] User: {current_user.get('user_id')}")
@@ -1196,66 +1197,33 @@ if AUTH_ENABLED:
             # Convert to JPEG and compress
             img_byte_arr = io.BytesIO()
             image.save(img_byte_arr, format='JPEG', quality=85, optimize=True)
-            img_byte_arr.seek(0)
+            img_bytes = img_byte_arr.getvalue()
 
-            # Generate filename
-            filename = secure_filename(f"{current_user['user_id']}_profile.jpg")
+            # Generate filename using user_id
+            filename = f"{current_user['user_id']}_profile.jpg"
             print(f"[PROFILE IMAGE UPLOAD] Generated filename: {filename}")
 
-            # Delete old profile image if exists
-            try:
-                print("[PROFILE IMAGE UPLOAD] Attempting to list existing files...")
-                existing_files = supabase.storage.from_('profile-images').list()
-                print(f"[PROFILE IMAGE UPLOAD] Found {len(existing_files)} files in bucket")
-                for f in existing_files:
-                    if f['name'].startswith(f"{current_user['user_id']}_"):
-                        print(f"[PROFILE IMAGE UPLOAD] Removing old file: {f['name']}")
-                        supabase.storage.from_('profile-images').remove([f['name']])
-            except Exception as e:
-                print(f"[PROFILE IMAGE UPLOAD] Error removing old profile image: {e}")
-                print(f"[PROFILE IMAGE UPLOAD] Error type: {type(e).__name__}")
-                import traceback
-                traceback.print_exc()
+            # Upload using the storage service (uses service key for proper permissions)
+            print(f"[PROFILE IMAGE UPLOAD] Uploading to profile-images bucket using service key...")
+            success, result = upload_image_to_supabase(img_bytes, filename, "image/jpeg")
 
-            # Upload to Supabase storage bucket 'profile-images'
-            try:
-                print(f"[PROFILE IMAGE UPLOAD] Uploading to profile-images bucket...")
-                storage_response = supabase.storage.from_('profile-images').upload(
-                    filename,
-                    img_byte_arr.getvalue(),
-                    file_options={"content-type": "image/jpeg", "upsert": "true"}
-                )
-                print(f"[PROFILE IMAGE UPLOAD] Upload response: {storage_response}")
-            except Exception as e:
-                print(f"[PROFILE IMAGE UPLOAD] Storage upload error: {e}")
-                print(f"[PROFILE IMAGE UPLOAD] Error type: {type(e).__name__}")
-                import traceback
-                traceback.print_exc()
-                # If upload fails due to existing file, try updating instead
-                try:
-                    print(f"[PROFILE IMAGE UPLOAD] Trying update instead...")
-                    supabase.storage.from_('profile-images').update(
-                        filename,
-                        img_byte_arr.getvalue(),
-                        file_options={"content-type": "image/jpeg"}
-                    )
-                    print(f"[PROFILE IMAGE UPLOAD] Update successful")
-                except Exception as e2:
-                    print(f"[PROFILE IMAGE UPLOAD] Storage update error: {e2}")
-                    print(f"[PROFILE IMAGE UPLOAD] Update error type: {type(e2).__name__}")
-                    import traceback
-                    traceback.print_exc()
-                    return jsonify({'error': f'Failed to upload image to storage: {str(e2)}'}), 500
+            if not success:
+                print(f"[PROFILE IMAGE UPLOAD] Upload failed: {result}")
+                return jsonify({'error': f'Failed to upload image: {result}'}), 500
 
-            # Get public URL
-            image_url = supabase.storage.from_('profile-images').get_public_url(filename)
-            print(f"[PROFILE IMAGE UPLOAD] Generated public URL: {image_url}")
+            image_url = result
+            print(f"[PROFILE IMAGE UPLOAD] Upload successful! URL: {image_url}")
 
-            # Update user profile with image URL
-            print(f"[PROFILE IMAGE UPLOAD] Updating user profile...")
-            supabase.table('user_profiles').update({
+            # Update user profile with image URL using admin client
+            print(f"[PROFILE IMAGE UPLOAD] Updating user profile with admin client...")
+            update_result = supabase_admin.table('user_profiles').update({
                 'profile_image_url': image_url
             }).eq('user_id', current_user['user_id']).execute()
+
+            if not update_result.data:
+                print(f"[PROFILE IMAGE UPLOAD] Warning: Profile update returned no data")
+            else:
+                print(f"[PROFILE IMAGE UPLOAD] Profile updated successfully")
 
             print(f"[PROFILE IMAGE UPLOAD] Success!")
             return jsonify({

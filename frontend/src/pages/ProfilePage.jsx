@@ -471,6 +471,15 @@ const ProfilePage = () => {
                   Upload Photo
                 </button>
               </div>
+              <button type="button" className="btn-save btn-save-top" onClick={handleSave} disabled={saving}>
+                {saving ? (
+                  <>
+                    <span className="loading-spinner"></span>Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </button>
             </div>
 
             {/* Basic Information */}
@@ -1163,6 +1172,12 @@ const ProfilePage = () => {
           margin-top: 40px;
           padding-top: 32px;
           border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .btn-save-top {
+          margin-left: auto;
+          flex: none;
+          padding: 12px 28px;
         }
 
         .btn-save {
