@@ -42,8 +42,13 @@ except ImportError as e:
 app = Flask(__name__)
 
 # CORS configuration - allow frontend origins
-ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5173').split(',')
-CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=True)  # Enable CORS for frontend access
+ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5173')
+if ALLOWED_ORIGINS == '*':
+    CORS(app, supports_credentials=False)  # Allow all origins
+else:
+    CORS(app, origins=ALLOWED_ORIGINS.split(','), supports_credentials=True,
+         allow_headers=['Content-Type', 'Authorization'],
+         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 
 if AUTH_ENABLED:
     app.config['SECRET_KEY'] = config.FLASK_SECRET_KEY
