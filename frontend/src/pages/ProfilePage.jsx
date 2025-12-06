@@ -346,9 +346,9 @@ const ProfilePage = () => {
       if (result.success) {
         // Clear all local auth state
         logout();
-        // Navigate to auth page after a brief delay to ensure state is cleared
+        // Navigate to landing page after deletion
         setTimeout(() => {
-          navigate('/auth', { replace: true });
+          navigate('/landing', { replace: true });
         }, 100);
       } else {
         setMessage({ type: 'error', text: result.error || 'Failed to delete account' });

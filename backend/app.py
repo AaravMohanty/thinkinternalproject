@@ -427,6 +427,7 @@ def get_alumni():
                 profile_img = profile.get('profile_image_url') or cached_csv_image
 
                 merged_alumni.append({
+                    'id': f'csv_{idx}',  # Unique ID for frontend key
                     'name': profile.get('full_name', csv_row.get('name')),
                     'role_title': ', '.join(profile.get('roles', [])) if profile.get('roles') else csv_row.get('role_title'),
                     'roles_list': profile.get('roles', []) if profile.get('roles') else csv_row.get('roles_list', []),
@@ -454,6 +455,7 @@ def get_alumni():
                 company_val = csv_row.get('company_name', csv_row.get('company', ''))
                 cached_image = csv_row.get('profile_image_url', '')  # This is the Supabase URL
                 merged_alumni.append({
+                    'id': f'csv_{idx}',  # Unique ID for frontend key
                     'name': csv_row.get('name', csv_row.get('Name', '')),
                     'role_title': csv_row.get('role_title', ''),
                     'roles_list': csv_row.get('roles_list', []),
@@ -480,6 +482,7 @@ def get_alumni():
         for profile in new_user_profiles:
             company_val = ', '.join(profile.get('companies', [])) if profile.get('companies') else ''
             merged_alumni.append({
+                'id': f"user_{profile.get('user_id', profile.get('id', ''))}",  # Unique ID for frontend key
                 'name': profile.get('full_name', ''),
                 'role_title': ', '.join(profile.get('roles', [])) if profile.get('roles') else '',
                 'roles_list': profile.get('roles', []) if profile.get('roles') else [],  # Add roles list
@@ -1569,62 +1572,111 @@ if AUTH_ENABLED:
     def delete_own_account(current_user):
         """Delete the current user's own account.
 
-        This permanently deletes the user's profile and authentication data.
-        IMPORTANT: Auth user is deleted FIRST to ensure email can be re-used.
+        This permanently deletes ALL user data from Supabase:
+        - Auth user (allows email re-use)
+        - User profile
+        - Chat sessions and messages
+        - Connections
+        - Resume files from storage
+        - Profile images from storage
+        - Marks CSV entry as deleted (if linked)
         """
         try:
             user_id = current_user['user_id']
-            print(f"Deleting account for user_id: {user_id}")
+            print(f"=== DELETING ACCOUNT for user_id: {user_id} ===")
 
-            # Get user profile to check if they're linked to a CSV entry
-            profile_check = supabase_admin.table('user_profiles').select('csv_source_id').eq('user_id', user_id).execute()
+            # Get user profile info before deletion
             csv_source_id = None
-            if profile_check.data and profile_check.data[0].get('csv_source_id') is not None:
-                csv_source_id = profile_check.data[0]['csv_source_id']
-                print(f"User is linked to CSV row {csv_source_id}")
-
-            # 1. Delete the user from auth FIRST (most important - allows email re-use)
             try:
-                auth_delete = supabase_admin.auth.admin.delete_user(user_id)
-                print(f"Auth delete result: {auth_delete}")
+                profile_check = supabase_admin.table('user_profiles').select('*').eq('user_id', user_id).execute()
+                if profile_check.data:
+                    csv_source_id = profile_check.data[0].get('csv_source_id')
+                    print(f"User profile found. CSV link: {csv_source_id}")
+            except Exception as e:
+                print(f"Warning: Could not fetch profile: {e}")
+
+            # 1. Clear foreign key references that don't have ON DELETE CASCADE
+            try:
+                supabase_admin.table('admin_actions').delete().eq('director_user_id', user_id).execute()
+                supabase_admin.table('admin_actions').delete().eq('target_user_id', user_id).execute()
+                supabase_admin.table('platform_settings').update({'updated_by': None}).eq('updated_by', user_id).execute()
+                print("Cleared FK references")
+            except Exception as e:
+                print(f"Warning: Could not clear FK references: {e}")
+
+            # 2. DELETE AUTH USER - THIS IS CRITICAL FOR EMAIL RE-USE
+            # If this fails, abort the entire operation
+            try:
+                supabase_admin.auth.admin.delete_user(user_id)
+                print("Deleted auth user successfully")
             except Exception as auth_error:
                 print(f"Auth delete error: {auth_error}")
-                # Try alternative method if the first fails
+                # Try alternative method
                 try:
                     supabase_admin.auth.admin.delete_user(uid=user_id)
+                    print("Deleted auth user (alternative method)")
                 except Exception as e2:
                     print(f"Alternative auth delete also failed: {e2}")
                     return jsonify({
                         'success': False,
-                        'error': f'Failed to delete auth user: {str(auth_error)}'
+                        'error': 'Failed to delete authentication. Please try again or contact support.'
                     }), 500
 
-            # 2. Delete chat sessions (messages will CASCADE)
+            # 3. Delete resume files from storage
+            try:
+                resume_files = supabase_admin.storage.from_('resumes').list(path='', options={'search': user_id})
+                if resume_files:
+                    files_to_delete = [f['name'] for f in resume_files if f['name'].startswith(user_id)]
+                    if files_to_delete:
+                        supabase_admin.storage.from_('resumes').remove(files_to_delete)
+                        print(f"Deleted {len(files_to_delete)} resume files")
+            except Exception as e:
+                print(f"Warning: Could not delete resumes: {e}")
+
+            # 2. Delete profile images from storage
+            try:
+                profile_images = supabase_admin.storage.from_('profile-images').list(path='', options={'search': user_id})
+                if profile_images:
+                    img_files = [f['name'] for f in profile_images if f['name'].startswith(user_id)]
+                    if img_files:
+                        supabase_admin.storage.from_('profile-images').remove(img_files)
+                        print(f"Deleted {len(img_files)} profile images")
+            except Exception as e:
+                print(f"Warning: Could not delete profile images: {e}")
+
+            # 3. Delete chat sessions (messages will CASCADE)
             try:
                 supabase_admin.table('chat_sessions').delete().eq('user_id', user_id).execute()
-            except Exception as chat_error:
-                print(f"Warning: Could not delete chat sessions: {chat_error}")
+                print("Deleted chat sessions")
+            except Exception as e:
+                print(f"Warning: Could not delete chat sessions: {e}")
 
-            # 3. Delete connections where user is either side
+            # 4. Delete connections where user is either side
             try:
                 supabase_admin.table('connections').delete().eq('user_id', user_id).execute()
                 supabase_admin.table('connections').delete().eq('target_user_id', user_id).execute()
-            except Exception as conn_error:
-                print(f"Warning: Could not delete connections: {conn_error}")
+                print("Deleted connections")
+            except Exception as e:
+                print(f"Warning: Could not delete connections: {e}")
 
-            # 4. Delete the user profile
-            profile_delete = supabase_admin.table('user_profiles').delete().eq('user_id', user_id).execute()
-            print(f"Profile delete result: {profile_delete}")
+            # 5. Delete the user profile
+            try:
+                supabase_admin.table('user_profiles').delete().eq('user_id', user_id).execute()
+                print("Deleted user profile")
+            except Exception as e:
+                print(f"Warning: Could not delete profile: {e}")
 
-            # 5. If user was linked to a CSV entry, mark it as deleted so it doesn't show
+            # 6. If user was linked to a CSV entry, mark it as deleted
             if csv_source_id is not None:
                 try:
                     supabase_admin.table('deleted_alumni').insert({
                         'csv_row_id': csv_source_id
                     }).execute()
                     print(f"Marked CSV row {csv_source_id} as deleted")
-                except Exception as del_error:
-                    print(f"Warning: Could not mark CSV as deleted: {del_error}")
+                except Exception as e:
+                    print(f"Warning: Could not mark CSV as deleted (table may not exist): {e}")
+
+            print(f"=== ACCOUNT DELETION COMPLETE for {user_id} ===")
 
             return jsonify({
                 'success': True,
@@ -2178,6 +2230,7 @@ if AUTH_ENABLED:
                 company_val = row.get('company_name', row.get('company', ''))
 
                 recommendations.append({
+                    'id': f'csv_{csv_id}',  # Unique ID for frontend key
                     'csv_row_id': int(csv_id),
                     'name': row.get('name', row.get('Name', '')),
                     'role_title': row.get('role_title', ''),
@@ -2450,6 +2503,7 @@ Output ONLY the email text, no explanations or markdown."""
                         company_val = row.get('company_name', row.get('company', ''))
 
                         member_cards.append({
+                            'id': f'csv_{idx}',  # Unique ID for frontend key
                             'csv_row_id': int(idx),
                             'name': row.get(name_col, ''),
                             'role_title': row.get('role_title', ''),
@@ -2468,7 +2522,62 @@ Output ONLY the email text, no explanations or markdown."""
                         })
                         name_found = True
 
-                # If no direct name match, use embeddings for semantic search
+                # If no direct name match, try role/title/company search
+                if not member_cards:
+                    # Extract search terms (remove common words)
+                    stop_words = {'find', 'search', 'looking', 'for', 'who', 'works', 'at', 'anyone',
+                                  'members', 'alumni', 'someone', 'people', 'show', 'me', 'recommend',
+                                  'suggest', 'in', 'the', 'a', 'an', 'is', 'are', 'can', 'you', 'i',
+                                  'want', 'need', 'like', 'similar', 'to', 'else'}
+                    search_terms = [word for word in msg_lower.split() if word not in stop_words and len(word) > 2]
+
+                    # Search by role, headline, company, or major
+                    for idx, row in csv_df.iterrows():
+                        role = str(row.get('role_title', '') or row.get('linkedinJobTitle', '')).lower()
+                        headline = str(row.get('headline', '') or row.get('linkedinHeadline', '')).lower()
+                        company = str(row.get('company_name', '') or row.get('company', '')).lower()
+                        major = str(row.get('major', '') or row.get('Major', '')).lower()
+
+                        # Check if any search term matches role, headline, company, or major
+                        match_score = 0
+                        for term in search_terms:
+                            if term in role:
+                                match_score += 3  # Role match is most important
+                            if term in headline:
+                                match_score += 2
+                            if term in company:
+                                match_score += 2
+                            if term in major:
+                                match_score += 1
+
+                        if match_score > 0:
+                            cached_image = row.get('profile_image_url', '')
+                            company_val = row.get('company_name', row.get('company', ''))
+
+                            member_cards.append({
+                                'id': f'csv_{idx}',  # Unique ID for frontend key
+                                'csv_row_id': int(idx),
+                                'name': row.get(name_col, ''),
+                                'role_title': row.get('role_title', ''),
+                                'roles_list': row.get('roles_list', []),
+                                'headline': row.get('headline', row.get('linkedinHeadline', '')),
+                                'company': company_val,
+                                'company_name': company_val,
+                                'companies_list': row.get('companies_list', []),
+                                'major': row.get('major', row.get('Major', '')),
+                                'grad_year': str(row.get('grad_year', row.get('Grad Yr', ''))),
+                                'location': row.get('location', ''),
+                                'profile_image_url': cached_image,
+                                'linkedin': row.get('linkedin', row.get('Linkedin', '')),
+                                'email': row.get('email', row.get('Personal Gmail', '')),
+                                'similarity': match_score / 10.0  # Normalize score
+                            })
+
+                    # Sort by match score (highest first) and limit to top 10
+                    member_cards.sort(key=lambda x: x['similarity'], reverse=True)
+                    member_cards = member_cards[:10]
+
+                # If still no matches, fall back to embeddings for semantic search
                 if not member_cards:
                     genai.configure(api_key=GEMINI_API_KEY)
                     try:
@@ -2482,12 +2591,12 @@ Output ONLY the email text, no explanations or markdown."""
                         # Query for similar alumni
                         match_response = supabase.rpc('match_alumni', {
                             'query_embedding': query_embedding,
-                            'match_count': 5,
+                            'match_count': 10,
                             'exclude_ids': [user_profile.get('csv_source_id')] if user_profile.get('csv_source_id') else []
                         }).execute()
 
                         if match_response.data:
-                            for match in match_response.data[:5]:
+                            for match in match_response.data[:10]:
                                 csv_id = match['csv_row_id']
                                 if csv_id in csv_df.index:
                                     row = csv_df.loc[csv_id]
@@ -2495,6 +2604,7 @@ Output ONLY the email text, no explanations or markdown."""
                                     company_val = row.get('company_name', row.get('company', ''))
 
                                     member_cards.append({
+                                        'id': f'csv_{csv_id}',  # Unique ID for frontend key
                                         'csv_row_id': int(csv_id),
                                         'name': row.get(name_col, ''),
                                         'role_title': row.get('role_title', ''),
@@ -2547,9 +2657,15 @@ GUIDELINES:
 - Give specific examples and actionable steps
 - When showing member results, briefly explain why they're relevant
 - For out-of-scope questions, politely redirect to networking/career topics
-- Never share sensitive information or make up member details
+- Do NOT use markdown formatting (no **, no *, no bullet points). Write in plain conversational text.
 
-{"MEMBER SEARCH RESULTS:" + chr(10) + chr(10).join([f"- {m['name']} ({m['role_title']} at {m['company']})" for m in member_cards]) if member_cards else ""}"""
+CRITICAL - MEMBER SEARCH RULES:
+- ONLY mention members that appear in MEMBER SEARCH RESULTS below
+- NEVER invent, make up, or hallucinate member names - this is extremely important
+- If search results are empty or don't match what the user asked for, say "I couldn't find anyone matching that" and suggest using the Alumni Directory
+- Do not reference any person who is not explicitly listed in the search results
+
+{("MEMBER SEARCH RESULTS:" + chr(10) + chr(10).join([f"- {m['name']} ({m['role_title']} at {m['company']})" for m in member_cards])) if member_cards else "MEMBER SEARCH RESULTS: No members found matching this query."}"""
 
             # Build conversation for Gemini
             messages = [system_prompt]
@@ -2683,34 +2799,83 @@ GUIDELINES:
                 return jsonify({'error': 'Email required'}), 400
 
             print(f"DEV: Attempting to clear user with email: {email}")
+            results = {'email': email, 'steps': []}
 
             # Find user in auth by listing users
-            users_response = supabase_admin.auth.admin.list_users()
-            target_user = None
+            try:
+                users_response = supabase_admin.auth.admin.list_users()
+                target_user = None
 
-            for user in users_response:
-                if user.email == email:
-                    target_user = user
-                    break
+                for user in users_response:
+                    if user.email == email:
+                        target_user = user
+                        break
 
-            if not target_user:
-                return jsonify({'error': 'User not found in auth', 'email': email}), 404
+                if not target_user:
+                    return jsonify({'error': 'User not found in auth', 'email': email}), 404
 
-            user_id = target_user.id
-            print(f"DEV: Found user_id: {user_id}")
+                user_id = target_user.id
+                results['user_id'] = user_id
+                results['steps'].append(f"Found user_id: {user_id}")
+                print(f"DEV: Found user_id: {user_id}")
+            except Exception as e:
+                results['steps'].append(f"Error finding user: {str(e)}")
+                return jsonify({'error': f'Error finding user: {str(e)}', 'results': results}), 500
 
-            # Delete profile first
-            profile_result = supabase_admin.table('user_profiles').delete().eq('user_id', user_id).execute()
-            print(f"DEV: Profile delete result: {profile_result}")
+            # Delete chat sessions
+            try:
+                supabase_admin.table('chat_sessions').delete().eq('user_id', user_id).execute()
+                results['steps'].append("Deleted chat sessions")
+            except Exception as e:
+                results['steps'].append(f"Chat sessions: {str(e)}")
 
-            # Delete auth user
-            auth_result = supabase_admin.auth.admin.delete_user(user_id)
-            print(f"DEV: Auth delete result: {auth_result}")
+            # Delete connections
+            try:
+                supabase_admin.table('connections').delete().eq('user_id', user_id).execute()
+                supabase_admin.table('connections').delete().eq('target_user_id', user_id).execute()
+                results['steps'].append("Deleted connections")
+            except Exception as e:
+                results['steps'].append(f"Connections: {str(e)}")
+
+            # Delete admin_actions referencing this user (no CASCADE on these FKs)
+            try:
+                supabase_admin.table('admin_actions').delete().eq('director_user_id', user_id).execute()
+                supabase_admin.table('admin_actions').delete().eq('target_user_id', user_id).execute()
+                results['steps'].append("Deleted admin actions")
+            except Exception as e:
+                results['steps'].append(f"Admin actions: {str(e)}")
+
+            # Clear platform_settings.updated_by reference (no CASCADE)
+            try:
+                supabase_admin.table('platform_settings').update({'updated_by': None}).eq('updated_by', user_id).execute()
+                results['steps'].append("Cleared platform_settings references")
+            except Exception as e:
+                results['steps'].append(f"Platform settings: {str(e)}")
+
+            # Delete profile
+            try:
+                supabase_admin.table('user_profiles').delete().eq('user_id', user_id).execute()
+                results['steps'].append("Deleted user profile")
+            except Exception as e:
+                results['steps'].append(f"Profile: {str(e)}")
+
+            # Delete auth user - MOST IMPORTANT
+            try:
+                supabase_admin.auth.admin.delete_user(user_id)
+                results['steps'].append("Deleted auth user")
+                print(f"DEV: Auth delete successful")
+            except Exception as e:
+                print(f"DEV: Auth delete error: {e}")
+                results['steps'].append(f"Auth delete error: {str(e)}")
+                return jsonify({
+                    'error': f'Failed to delete auth user: {str(e)}',
+                    'results': results
+                }), 500
 
             return jsonify({
                 'success': True,
                 'message': f'User {email} cleared successfully',
-                'user_id': user_id
+                'results': results
             }), 200
 
         except Exception as e:
