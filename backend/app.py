@@ -1829,7 +1829,45 @@ if AUTH_ENABLED:
             member_info = member.data[0]
             deleted_items = []
 
-            # 1. Delete resume files from storage
+            # 1. Delete chat sessions explicitly (messages will CASCADE)
+            try:
+                chat_delete = supabase_admin.table('chat_sessions').delete().eq('user_id', user_id).execute()
+                if chat_delete.data:
+                    deleted_items.append(f"chat sessions: {len(chat_delete.data)}")
+            except Exception as chat_error:
+                print(f"Warning: Could not delete chat sessions: {chat_error}")
+
+            # 2. Delete connections where user is either side
+            try:
+                conn_delete_1 = supabase_admin.table('connections').delete().eq('user_id', user_id).execute()
+                conn_delete_2 = supabase_admin.table('connections').delete().eq('target_user_id', user_id).execute()
+                total_conn = len(conn_delete_1.data or []) + len(conn_delete_2.data or [])
+                if total_conn > 0:
+                    deleted_items.append(f"connections: {total_conn}")
+            except Exception as conn_error:
+                print(f"Warning: Could not delete connections: {conn_error}")
+
+            # 3. Delete the user profile
+            supabase_admin.table('user_profiles').delete().eq('user_id', user_id).execute()
+            deleted_items.append("user profile")
+
+            # 4. Delete admin_actions where this user is the director or target
+            try:
+                admin_delete_1 = supabase_admin.table('admin_actions').delete().eq('director_user_id', user_id).execute()
+                admin_delete_2 = supabase_admin.table('admin_actions').delete().eq('target_user_id', user_id).execute()
+                total_admin = len(admin_delete_1.data or []) + len(admin_delete_2.data or [])
+                if total_admin > 0:
+                    deleted_items.append(f"admin actions: {total_admin}")
+            except Exception as admin_error:
+                print(f"Warning: Could not delete admin actions: {admin_error}")
+
+            # 5. Update platform_settings if this user updated it last
+            try:
+                supabase_admin.table('platform_settings').update({'updated_by': None}).eq('updated_by', user_id).execute()
+            except Exception as settings_error:
+                print(f"Warning: Could not clear platform_settings reference: {settings_error}")
+
+            # 6. Delete resume files from storage
             try:
                 # List all files with the user_id prefix in resumes bucket
                 resume_files = supabase_admin.storage.from_('resumes').list(path='', options={
@@ -1846,7 +1884,7 @@ if AUTH_ENABLED:
             except Exception as resume_error:
                 print(f"Warning: Could not delete resumes: {resume_error}")
 
-            # 2. Delete any user-uploaded profile images (not LinkedIn cached ones)
+            # 7. Delete any user-uploaded profile images (not LinkedIn cached ones)
             # User profile images would be in profile-images bucket with user_id prefix
             try:
                 profile_images = supabase_admin.storage.from_('profile-images').list(path='', options={
@@ -1862,48 +1900,22 @@ if AUTH_ENABLED:
             except Exception as img_error:
                 print(f"Warning: Could not delete profile images: {img_error}")
 
-            # 3. Delete from auth FIRST (most important - allows email re-use)
-            # This must succeed before we delete other data
+            # 8. Delete from auth LAST (after all database references are removed)
+            # This must succeed for the operation to be considered successful
             try:
-                supabase_admin.auth.admin.delete_user(user_id)
+                supabase_admin.auth.admin.delete_user(id=user_id)
                 deleted_items.append("auth account")
                 print(f"Deleted auth account for user {user_id}")
             except Exception as auth_error:
                 print(f"Auth delete error: {auth_error}")
-                # Try alternative method
-                try:
-                    supabase_admin.auth.admin.delete_user(uid=user_id)
-                    deleted_items.append("auth account")
-                except Exception as e2:
-                    print(f"Alternative auth delete also failed: {e2}")
-                    return jsonify({
-                        'success': False,
-                        'error': f'Failed to delete auth user: {str(auth_error)}'
-                    }), 500
+                import traceback
+                print(f"Auth delete traceback: {traceback.format_exc()}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to delete auth user: {str(auth_error)}'
+                }), 500
 
-            # 4. Delete chat sessions explicitly (messages will CASCADE)
-            try:
-                chat_delete = supabase_admin.table('chat_sessions').delete().eq('user_id', user_id).execute()
-                if chat_delete.data:
-                    deleted_items.append(f"chat sessions: {len(chat_delete.data)}")
-            except Exception as chat_error:
-                print(f"Warning: Could not delete chat sessions: {chat_error}")
-
-            # 5. Delete connections where user is either side
-            try:
-                conn_delete_1 = supabase_admin.table('connections').delete().eq('user_id', user_id).execute()
-                conn_delete_2 = supabase_admin.table('connections').delete().eq('target_user_id', user_id).execute()
-                total_conn = len(conn_delete_1.data or []) + len(conn_delete_2.data or [])
-                if total_conn > 0:
-                    deleted_items.append(f"connections: {total_conn}")
-            except Exception as conn_error:
-                print(f"Warning: Could not delete connections: {conn_error}")
-
-            # 6. Delete the user profile
-            supabase_admin.table('user_profiles').delete().eq('user_id', user_id).execute()
-            deleted_items.append("user profile")
-
-            # 7. If user was linked to a CSV entry, mark it as deleted so it doesn't show
+            # 9. If user was linked to a CSV entry, mark it as deleted so it doesn't show
             csv_source_id = member_info.get('csv_source_id')
             if csv_source_id is not None:
                 try:
