@@ -251,12 +251,14 @@ const ProfilePage = () => {
     try {
       // Upload profile picture first if one was selected
       let imageUploadSuccess = true;
+      let newImageUrl = null;
       if (uploadedProfilePic) {
         try {
           const imageResult = await profileAPI.uploadProfileImage(uploadedProfilePic);
           if (imageResult.success) {
-            // Update the profile pic URL in the UI
-            setProfilePicUrl(imageResult.image_url);
+            // Save the new image URL
+            newImageUrl = imageResult.image_url;
+            setProfilePicUrl(newImageUrl);
           } else {
             imageUploadSuccess = false;
             setMessage({ type: 'error', text: imageResult.error || 'Failed to upload profile picture' });
@@ -304,11 +306,17 @@ const ProfilePage = () => {
       const result = await profileAPI.update(profileData);
 
       if (result.success) {
-        setOriginalProfile(result.profile);
+        // If we uploaded a new image, make sure the profile has the updated URL
+        const updatedProfile = newImageUrl
+          ? { ...result.profile, profile_image_url: newImageUrl }
+          : result.profile;
+
+        setOriginalProfile(updatedProfile);
+        setProfilePicUrl(updatedProfile.profile_image_url || '');
         setMessage({ type: 'success', text: 'Profile updated successfully!' });
 
-        // Update user in context
-        const updatedUser = { ...user, profile: result.profile };
+        // Update user in context with the correct image URL
+        const updatedUser = { ...user, profile: updatedProfile };
         updateUser(updatedUser);
 
         setUploadedProfilePic(null);

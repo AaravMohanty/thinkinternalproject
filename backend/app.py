@@ -1214,10 +1214,14 @@ if AUTH_ENABLED:
             image_url = result
             print(f"[PROFILE IMAGE UPLOAD] Upload successful! URL: {image_url}")
 
+            # Add cache-busting timestamp to the URL
+            import time
+            cache_bust_url = f"{image_url}?t={int(time.time())}"
+
             # Update user profile with image URL using admin client
             print(f"[PROFILE IMAGE UPLOAD] Updating user profile with admin client...")
             update_result = supabase_admin.table('user_profiles').update({
-                'profile_image_url': image_url
+                'profile_image_url': cache_bust_url
             }).eq('user_id', current_user['user_id']).execute()
 
             if not update_result.data:
@@ -1229,7 +1233,7 @@ if AUTH_ENABLED:
             return jsonify({
                 'success': True,
                 'message': 'Profile image uploaded successfully',
-                'image_url': image_url
+                'image_url': cache_bust_url
             }), 200
 
         except Exception as e:
