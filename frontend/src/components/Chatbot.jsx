@@ -61,7 +61,7 @@ const Chatbot = () => {
 
     const userMessage = inputValue.trim();
     setInputValue('');
-    setMemberCards([]);
+    // Don't clear member cards here - keep them visible until new ones are returned
 
     // Add user message to chat
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
@@ -71,15 +71,19 @@ const Chatbot = () => {
       const response = await chatAPI.sendMessage(userMessage, sessionId);
 
       if (response.success) {
-        // Add AI response
-        setMessages(prev => [...prev, { role: 'assistant', content: response.response }]);
+        // Add AI response with member cards attached to the message
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: response.response,
+          memberCards: response.member_cards || null
+        }]);
 
         // Update session ID if new
         if (response.session_id) {
           setSessionId(response.session_id);
         }
 
-        // Show member cards if returned
+        // Also update the current memberCards state for expanded card functionality
         if (response.member_cards && response.member_cards.length > 0) {
           setMemberCards(response.member_cards);
         }
@@ -372,9 +376,11 @@ const Chatbot = () => {
           {/* Header */}
           <div className="chatbot-header">
             <div className="chatbot-header-title">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-              </svg>
+              <img
+                src="/assets/Copy of P Logo for dark background (1).png"
+                alt="THINK Logo"
+                className="chatbot-header-logo"
+              />
               <span>The THINKer</span>
             </div>
             <button className="chatbot-reset-chat" onClick={handleNewChat} title="Reset conversation">
@@ -387,9 +393,11 @@ const Chatbot = () => {
             {messages.length === 0 && (
               <div className="chatbot-welcome">
                 <div className="chatbot-welcome-icon">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                  </svg>
+                  <img
+                    src="/assets/Copy of P Logo for dark background (1).png"
+                    alt="THINK Logo"
+                    className="chatbot-welcome-logo"
+                  />
                 </div>
                 <h3>The THINKer</h3>
                 <p>I can help you with networking advice, finding THINK members, and using the platform.</p>
@@ -408,27 +416,28 @@ const Chatbot = () => {
             )}
 
             {messages.map((msg, index) => (
-              <div key={index} className={`chatbot-message ${msg.role}`}>
-                {msg.role === 'assistant' && (
-                  <div className="chatbot-message-avatar">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-                    </svg>
+              <div key={index} className="chatbot-message-group">
+                <div className={`chatbot-message ${msg.role}`}>
+                  {msg.role === 'assistant' && (
+                    <div className="chatbot-message-avatar">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+                      </svg>
+                    </div>
+                  )}
+                  <div className="chatbot-message-content">
+                    {msg.content}
+                  </div>
+                </div>
+                {/* Member Cards inline with the message that generated them */}
+                {msg.memberCards && msg.memberCards.length > 0 && (
+                  <div className="chatbot-member-cards">
+                    <div className="chatbot-member-cards-label">Found these members:</div>
+                    {msg.memberCards.map(renderMemberCard)}
                   </div>
                 )}
-                <div className="chatbot-message-content">
-                  {msg.content}
-                </div>
               </div>
             ))}
-
-            {/* Member Cards */}
-            {memberCards.length > 0 && (
-              <div className="chatbot-member-cards">
-                <div className="chatbot-member-cards-label">Found these members:</div>
-                {memberCards.map(renderMemberCard)}
-              </div>
-            )}
 
             {isLoading && (
               <div className="chatbot-message assistant">

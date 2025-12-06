@@ -298,6 +298,23 @@ CREATE TRIGGER update_chat_sessions_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 
 -- =====================================================
+-- DELETED ALUMNI TABLE
+-- Tracks CSV entries that should be hidden (user deleted their account)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS deleted_alumni (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  csv_row_id INTEGER NOT NULL UNIQUE,
+  deleted_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Allow service role to manage deleted alumni
+ALTER TABLE deleted_alumni ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Service role can manage deleted_alumni"
+  ON deleted_alumni FOR ALL
+  USING (auth.role() = 'service_role');
+
+-- =====================================================
 -- NOTES FOR SETUP
 -- =====================================================
 

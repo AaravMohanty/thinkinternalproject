@@ -387,6 +387,15 @@ def get_alumni():
         except:
             user_profiles = []
 
+        # Load deleted alumni IDs to filter them out
+        deleted_csv_ids = set()
+        try:
+            deleted_response = supabase.table('deleted_alumni').select('csv_row_id').execute()
+            if deleted_response.data:
+                deleted_csv_ids = set(d['csv_row_id'] for d in deleted_response.data)
+        except:
+            pass  # Table might not exist yet
+
         # Create a mapping of csv_source_id -> user_profile
         csv_links = {}
         new_user_profiles = []
@@ -403,6 +412,10 @@ def get_alumni():
         merged_alumni = []
 
         for idx, csv_row in csv_df.iterrows():
+            # Skip deleted alumni entries
+            if idx in deleted_csv_ids:
+                continue
+
             if idx in csv_links:
                 # Use user profile data instead of CSV
                 profile = csv_links[idx]
@@ -1563,6 +1576,13 @@ if AUTH_ENABLED:
             user_id = current_user['user_id']
             print(f"Deleting account for user_id: {user_id}")
 
+            # Get user profile to check if they're linked to a CSV entry
+            profile_check = supabase_admin.table('user_profiles').select('csv_source_id').eq('user_id', user_id).execute()
+            csv_source_id = None
+            if profile_check.data and profile_check.data[0].get('csv_source_id') is not None:
+                csv_source_id = profile_check.data[0]['csv_source_id']
+                print(f"User is linked to CSV row {csv_source_id}")
+
             # 1. Delete the user from auth FIRST (most important - allows email re-use)
             try:
                 auth_delete = supabase_admin.auth.admin.delete_user(user_id)
@@ -1595,6 +1615,16 @@ if AUTH_ENABLED:
             # 4. Delete the user profile
             profile_delete = supabase_admin.table('user_profiles').delete().eq('user_id', user_id).execute()
             print(f"Profile delete result: {profile_delete}")
+
+            # 5. If user was linked to a CSV entry, mark it as deleted so it doesn't show
+            if csv_source_id is not None:
+                try:
+                    supabase_admin.table('deleted_alumni').insert({
+                        'csv_row_id': csv_source_id
+                    }).execute()
+                    print(f"Marked CSV row {csv_source_id} as deleted")
+                except Exception as del_error:
+                    print(f"Warning: Could not mark CSV as deleted: {del_error}")
 
             return jsonify({
                 'success': True,
@@ -1735,7 +1765,7 @@ if AUTH_ENABLED:
         try:
             # Get member info before deletion for logging
             member = supabase.table('user_profiles').select(
-                'full_name, personal_email, resume_url, profile_image_url'
+                'full_name, personal_email, resume_url, profile_image_url, csv_source_id'
             ).eq('user_id', user_id).execute()
 
             if not member.data:
@@ -1820,6 +1850,18 @@ if AUTH_ENABLED:
             # 6. Delete the user profile
             supabase_admin.table('user_profiles').delete().eq('user_id', user_id).execute()
             deleted_items.append("user profile")
+
+            # 7. If user was linked to a CSV entry, mark it as deleted so it doesn't show
+            csv_source_id = member_info.get('csv_source_id')
+            if csv_source_id is not None:
+                try:
+                    supabase_admin.table('deleted_alumni').insert({
+                        'csv_row_id': csv_source_id
+                    }).execute()
+                    deleted_items.append("alumni card")
+                    print(f"Marked CSV row {csv_source_id} as deleted")
+                except Exception as del_error:
+                    print(f"Warning: Could not mark CSV as deleted: {del_error}")
 
             # Log the action with details of what was deleted
             log_admin_action(
@@ -2213,15 +2255,11 @@ if AUTH_ENABLED:
             # Default template structure
             default_template = """Hi {alumni_name},
 
-I hope this message finds you well. My name is {user_name}, and I'm a {user_major} student at Purdue University{grad_info}. I came across your profile through THINK and was really impressed by your career journey.
+I'm {user_name}, a {user_major} student at Purdue University. I came across your profile through THINK and was excited to see your work at {company}.
 
-I'm particularly interested in learning more about your experience at {company}{role_mention}. {interest_line}
+I'm really interested in learning more about your career path and any advice you might have for someone exploring this field. Would you be open to a quick 15-minute call sometime?
 
-Would you be open to a brief phone call or virtual coffee chat? I'd love to hear about your path and any advice you might have for someone interested in this field.
-
-Thank you for your time, and I look forward to hearing from you.
-
-Best regards,
+Thanks so much,
 {user_name}"""
 
             # Build context for the AI
@@ -2292,12 +2330,11 @@ TEMPLATE TO FOLLOW (personalize it):
 
 Instructions:
 1. Start with "Hi {alumni_first_name},"
-2. Introduce the sender naturally
-3. Show genuine interest in the recipient's company or role - be specific if possible
-4. Ask for a brief call or chat
-5. Keep it concise (under 150 words)
-6. Be professional but warm and genuine
-7. End with the sender's first name only
+2. Keep it concise but warm - around 4-5 sentences, under 100 words
+3. Introduce yourself, show genuine interest in their work, make a clear ask
+4. Be professional but personable - not stiff or overly formal
+5. If possible, mention something specific about their company or role
+6. End with the sender's first name
 
 Output ONLY the email text, no explanations or markdown."""
 
@@ -2388,52 +2425,94 @@ Output ONLY the email text, no explanations or markdown."""
             member_cards = []
 
             if is_member_search:
-                # Use embeddings to find relevant members
-                genai.configure(api_key=GEMINI_API_KEY)
-                try:
-                    result = genai.embed_content(
-                        model=EMBEDDING_MODEL,
-                        content=user_message,
-                        task_type="retrieval_query"
-                    )
-                    query_embedding = result['embedding']
+                # Load CSV for searching
+                csv_df = load_alumni_data()
 
-                    # Query for similar alumni
-                    match_response = supabase.rpc('match_alumni', {
-                        'query_embedding': query_embedding,
-                        'match_count': 5,
-                        'exclude_ids': [user_profile.get('csv_source_id')] if user_profile.get('csv_source_id') else []
-                    }).execute()
+                # First, try direct name search (case-insensitive)
+                # Extract potential name from the message
+                msg_lower = user_message.lower()
+                name_found = False
 
-                    if match_response.data:
-                        # Load CSV to get full member data
-                        csv_df = load_alumni_data()
-                        for match in match_response.data[:5]:
-                            csv_id = match['csv_row_id']
-                            if csv_id in csv_df.index:
-                                row = csv_df.loc[csv_id]
-                                cached_image = row.get('profile_image_url', '')
-                                company_val = row.get('company_name', row.get('company', ''))
+                # Get the name column
+                name_col = 'name' if 'name' in csv_df.columns else 'Name'
 
-                                member_cards.append({
-                                    'csv_row_id': int(csv_id),
-                                    'name': row.get('name', row.get('Name', '')),
-                                    'role_title': row.get('role_title', ''),
-                                    'roles_list': row.get('roles_list', []),
-                                    'headline': row.get('headline', row.get('linkedinHeadline', '')),
-                                    'company': company_val,
-                                    'company_name': company_val,
-                                    'companies_list': row.get('companies_list', []),
-                                    'major': row.get('major', row.get('Major', '')),
-                                    'grad_year': str(row.get('grad_year', row.get('Grad Yr', ''))),
-                                    'location': row.get('location', ''),
-                                    'profile_image_url': cached_image,
-                                    'linkedin': row.get('linkedin', row.get('Linkedin', '')),
-                                    'email': row.get('email', row.get('Personal Gmail', '')),
-                                    'similarity': match.get('similarity', 0)
-                                })
-                except Exception as embed_error:
-                    print(f"Embedding search failed: {embed_error}")
+                # Search for any name in the CSV that appears in the user's message
+                for idx, row in csv_df.iterrows():
+                    alumni_name = str(row.get(name_col, '')).lower()
+                    first_name = alumni_name.split()[0] if alumni_name else ''
+                    last_name = alumni_name.split()[-1] if alumni_name and len(alumni_name.split()) > 1 else ''
+
+                    # Check if first name, last name, or full name is mentioned
+                    if (first_name and first_name in msg_lower) or \
+                       (last_name and last_name in msg_lower) or \
+                       (alumni_name and alumni_name in msg_lower):
+                        cached_image = row.get('profile_image_url', '')
+                        company_val = row.get('company_name', row.get('company', ''))
+
+                        member_cards.append({
+                            'csv_row_id': int(idx),
+                            'name': row.get(name_col, ''),
+                            'role_title': row.get('role_title', ''),
+                            'roles_list': row.get('roles_list', []),
+                            'headline': row.get('headline', row.get('linkedinHeadline', '')),
+                            'company': company_val,
+                            'company_name': company_val,
+                            'companies_list': row.get('companies_list', []),
+                            'major': row.get('major', row.get('Major', '')),
+                            'grad_year': str(row.get('grad_year', row.get('Grad Yr', ''))),
+                            'location': row.get('location', ''),
+                            'profile_image_url': cached_image,
+                            'linkedin': row.get('linkedin', row.get('Linkedin', '')),
+                            'email': row.get('email', row.get('Personal Gmail', '')),
+                            'similarity': 1.0  # Direct match
+                        })
+                        name_found = True
+
+                # If no direct name match, use embeddings for semantic search
+                if not member_cards:
+                    genai.configure(api_key=GEMINI_API_KEY)
+                    try:
+                        result = genai.embed_content(
+                            model=EMBEDDING_MODEL,
+                            content=user_message,
+                            task_type="retrieval_query"
+                        )
+                        query_embedding = result['embedding']
+
+                        # Query for similar alumni
+                        match_response = supabase.rpc('match_alumni', {
+                            'query_embedding': query_embedding,
+                            'match_count': 5,
+                            'exclude_ids': [user_profile.get('csv_source_id')] if user_profile.get('csv_source_id') else []
+                        }).execute()
+
+                        if match_response.data:
+                            for match in match_response.data[:5]:
+                                csv_id = match['csv_row_id']
+                                if csv_id in csv_df.index:
+                                    row = csv_df.loc[csv_id]
+                                    cached_image = row.get('profile_image_url', '')
+                                    company_val = row.get('company_name', row.get('company', ''))
+
+                                    member_cards.append({
+                                        'csv_row_id': int(csv_id),
+                                        'name': row.get(name_col, ''),
+                                        'role_title': row.get('role_title', ''),
+                                        'roles_list': row.get('roles_list', []),
+                                        'headline': row.get('headline', row.get('linkedinHeadline', '')),
+                                        'company': company_val,
+                                        'company_name': company_val,
+                                        'companies_list': row.get('companies_list', []),
+                                        'major': row.get('major', row.get('Major', '')),
+                                        'grad_year': str(row.get('grad_year', row.get('Grad Yr', ''))),
+                                        'location': row.get('location', ''),
+                                        'profile_image_url': cached_image,
+                                        'linkedin': row.get('linkedin', row.get('Linkedin', '')),
+                                        'email': row.get('email', row.get('Personal Gmail', '')),
+                                        'similarity': match.get('similarity', 0)
+                                    })
+                    except Exception as embed_error:
+                        print(f"Embedding search failed: {embed_error}")
 
             # Build system prompt with THINK info and networking advice
             system_prompt = f"""You are the THINK Networking Advisor, an AI assistant for Purdue THINK members.
