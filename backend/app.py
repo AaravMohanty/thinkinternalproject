@@ -2465,10 +2465,27 @@ Output ONLY the email text, no explanations or markdown."""
             user_profile = profile_response.data[0] if profile_response.data else {}
 
             # Check if user is asking to find/search for members
-            search_keywords = ['find', 'search', 'looking for', 'who works at', 'anyone at',
-                              'members at', 'alumni at', 'someone at', 'people at', 'works in',
-                              'who is', 'show me', 'recommend', 'suggest']
-            is_member_search = any(kw in user_message.lower() for kw in search_keywords)
+            # Be very lenient - trigger search on many common phrases
+            search_keywords = [
+                # Direct search commands
+                'find', 'search', 'show me', 'show', 'get me', 'give me', 'gimme',
+                # Looking/asking for someone
+                'looking for', 'looking', 'who works', 'who is', 'who should', 'who can',
+                'anyone at', 'anyone in', 'anyone who', 'someone at', 'someone in', 'someone who',
+                'people at', 'people in', 'people who', 'members at', 'members in', 'alumni at',
+                # Recommendations/suggestions
+                'recommend', 'suggest', 'advice', 'help me', 'help with',
+                'contact for', 'contact about', 'talk to', 'speak to', 'reach out',
+                'connect with', 'connect me', 'introduce me',
+                # Industry/role searches
+                'works in', 'works at', 'working in', 'working at', 'work in', 'work at',
+                'consultant', 'consulting', 'finance', 'technology', 'engineering',
+                'software', 'product', 'analyst', 'manager', 'intern',
+                # Generic asks
+                'names', 'list', 'members', 'alumni', 'people'
+            ]
+            msg_lower = user_message.lower()
+            is_member_search = any(kw in msg_lower for kw in search_keywords)
 
             member_cards = []
 
@@ -2477,8 +2494,7 @@ Output ONLY the email text, no explanations or markdown."""
                 csv_df = load_alumni_data()
 
                 # First, try direct name search (case-insensitive)
-                # Extract potential name from the message
-                msg_lower = user_message.lower()
+                # msg_lower already defined above
                 name_found = False
 
                 # Get the name column
@@ -2517,23 +2533,27 @@ Output ONLY the email text, no explanations or markdown."""
                         })
                         name_found = True
 
-                # If no direct name match, try role/title/company search
+                # If no direct name match, try role/title/company/industry search
                 if not member_cards:
-                    # Extract search terms (remove common words)
+                    # Extract search terms (remove common words - be comprehensive)
                     stop_words = {'find', 'search', 'looking', 'for', 'who', 'works', 'at', 'anyone',
                                   'members', 'alumni', 'someone', 'people', 'show', 'me', 'recommend',
                                   'suggest', 'in', 'the', 'a', 'an', 'is', 'are', 'can', 'you', 'i',
-                                  'want', 'need', 'like', 'similar', 'to', 'else'}
+                                  'want', 'need', 'like', 'similar', 'to', 'else', 'give', 'get', 'gimme',
+                                  'contact', 'talk', 'speak', 'reach', 'connect', 'introduce', 'help',
+                                  'advice', 'about', 'with', 'should', 'could', 'would', 'names', 'list',
+                                  'some', 'any', 'all', 'more', 'other', 'out'}
                     search_terms = [word for word in msg_lower.split() if word not in stop_words and len(word) > 2]
 
-                    # Search by role, headline, company, or major
+                    # Search by role, headline, company, major, OR industry
                     for idx, row in csv_df.iterrows():
                         role = str(row.get('role_title', '') or row.get('linkedinJobTitle', '')).lower()
                         headline = str(row.get('headline', '') or row.get('linkedinHeadline', '')).lower()
                         company = str(row.get('company_name', '') or row.get('company', '')).lower()
                         major = str(row.get('major', '') or row.get('Major', '')).lower()
+                        industry = str(row.get('company_industry', '') or row.get('companyIndustry', '')).lower()
 
-                        # Check if any search term matches role, headline, company, or major
+                        # Check if any search term matches role, headline, company, major, or industry
                         match_score = 0
                         for term in search_terms:
                             if term in role:
@@ -2542,6 +2562,8 @@ Output ONLY the email text, no explanations or markdown."""
                                 match_score += 2
                             if term in company:
                                 match_score += 2
+                            if term in industry:
+                                match_score += 3  # Industry is important for "consulting" type queries
                             if term in major:
                                 match_score += 1
 
@@ -2650,14 +2672,20 @@ GUIDELINES:
 - Be warm, professional, and encouraging
 - Keep responses concise (3-5 sentences unless more detail is needed)
 - Give specific examples and actionable steps
-- When showing member results, briefly explain why they're relevant
 - For out-of-scope questions, politely redirect to networking/career topics
 - Do NOT use markdown formatting (no **, no *, no bullet points). Write in plain conversational text.
+
+IMPORTANT - BE PROACTIVE WITH MEMBER RESULTS:
+- When member cards are found, ALWAYS mention the specific names in your response
+- Start your response by acknowledging who you found: "I found [Name]..." or "Here's [Name]..."
+- Briefly explain why each person is relevant to the user's request
+- The member cards will be displayed below your response, so reference them
+- If the user asks for anyone by name, industry, role, company, or general advice - show cards
 
 CRITICAL - MEMBER SEARCH RULES:
 - ONLY mention members that appear in MEMBER SEARCH RESULTS below
 - NEVER invent, make up, or hallucinate member names - this is extremely important
-- If search results are empty or don't match what the user asked for, say "I couldn't find anyone matching that" and suggest using the Alumni Directory
+- If search results are empty or don't match what the user asked for, say "I couldn't find anyone matching that" and suggest using the Alumni Directory or try a different search
 - Do not reference any person who is not explicitly listed in the search results
 
 {("MEMBER SEARCH RESULTS:" + chr(10) + chr(10).join([f"- {m['name']} ({m['role_title']} at {m['company']})" for m in member_cards])) if member_cards else "MEMBER SEARCH RESULTS: No members found matching this query."}"""
