@@ -30,7 +30,7 @@ ALUMNI_CSV = os.path.join(DATA_DIR, "alumni.csv")
 # 3. Use this format: https://drive.google.com/uc?export=download&id=FILE_ID
 # Example: if share link is https://drive.google.com/file/d/1ABC123/view
 # Then FILE_ID is 1ABC123
-GOOGLE_DRIVE_FILE_ID = "1-ZPmzBu6xat2qQxOti2vg7ricaAlzkn_"  # Replace with your actual file ID
+GOOGLE_DRIVE_FILE_ID = "1awF00O41QXsCYFWj2fb_nHr_ycuXGtCN"  # Updated with new alumni data
 GOOGLE_DRIVE_URL = f"https://drive.google.com/uc?export=download&id={GOOGLE_DRIVE_FILE_ID}" if GOOGLE_DRIVE_FILE_ID else None
 
 # ----------------------------

@@ -54,7 +54,7 @@ if AUTH_ENABLED:
     app.config['SECRET_KEY'] = config.FLASK_SECRET_KEY
 
 # Google Drive configuration
-GOOGLE_DRIVE_FILE_ID = "17nWOQo424w0W6GCTsdP2UxbHQpuQXO5G"
+GOOGLE_DRIVE_FILE_ID = "1awF00O41QXsCYFWj2fb_nHr_ycuXGtCN"
 GOOGLE_DRIVE_URL = f"https://drive.google.com/uc?export=download&id={GOOGLE_DRIVE_FILE_ID}"
 
 # Fallback data directory

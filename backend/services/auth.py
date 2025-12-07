@@ -294,13 +294,18 @@ def reset_password_request(email: str) -> Tuple[bool, str]:
     Returns:
         Tuple of (success, message)
     """
+    import os
     try:
+        # Get frontend URL from environment or use default
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+        redirect_url = f"{frontend_url}/reset-password"
+
         # Request password reset from Supabase with redirect URL
         # The redirect URL is where users will land after clicking the email link
         supabase.auth.reset_password_email(
             email,
             {
-                "redirect_to": "http://localhost:8000/reset-password.html"
+                "redirect_to": redirect_url
             }
         )
 
