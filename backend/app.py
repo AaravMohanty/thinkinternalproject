@@ -344,7 +344,7 @@ def load_alumni_data():
 
     # Custom LinkedIn URLs to override/add (for testing or fixing specific profiles)
     custom_linkedin_urls = {
-        "Aaditya Doiphode": "https://media.licdn.com/dms/image/v2/D5603AQHLsIvDSwa7jA/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1728848525504?e=1764806400&v=beta&t=VwaiodJohOHZn7s2Y1iyaEUa7MYK8oFmPC4u2BFr6sE"
+        # Removed Aaditya Doiphode - using Supabase saved image instead
     }
 
     # Apply custom local image mappings
