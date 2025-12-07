@@ -19,9 +19,22 @@ const HomePage = () => {
 
   // Recommendations state
   const [recommendations, setRecommendations] = useState([]);
-  const [excludedIds, setExcludedIds] = useState([]);
+  const [excludedIds, setExcludedIds] = useState(() => {
+    // Initialize from localStorage
+    try {
+      const saved = localStorage.getItem('excludedRecIds');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [recsMessage, setRecsMessage] = useState('');
+
+  // Persist excludedIds to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('excludedRecIds', JSON.stringify(excludedIds));
+    } catch { /* ignore */ }
+  }, [excludedIds]);
 
   // AI Email state
   const [generatingEmailFor, setGeneratingEmailFor] = useState(null);
@@ -87,6 +100,7 @@ const HomePage = () => {
 
   const resetRecommendations = () => {
     setExcludedIds([]);
+    localStorage.removeItem('excludedRecIds');
     loadRecommendations([]);
   };
 
