@@ -163,7 +163,7 @@ const Chatbot = () => {
     }
   };
 
-  const fallbackLogo = '/assets/black.png';
+  const fallbackLogo = '/assets/Copy of P Logo for dark background (1).png';
 
   const renderMemberCard = (member) => {
     const profileImage = member.profile_image_url || '';
@@ -363,7 +363,7 @@ const Chatbot = () => {
           </svg>
         ) : (
           <img
-            src="/assets/black.png"
+            src="/assets/Copy of P Logo for dark background (1).png"
             alt="The THINKer"
             style={{ width: '40px', height: '40px', objectFit: 'contain' }}
           />
@@ -377,7 +377,7 @@ const Chatbot = () => {
           <div className="chatbot-header">
             <div className="chatbot-header-title">
               <img
-                src="/assets/black.png"
+                src="/assets/Copy of P Logo for dark background (1).png"
                 alt="THINK Logo"
                 className="chatbot-header-logo"
               />
@@ -402,7 +402,7 @@ const Chatbot = () => {
               <div className="chatbot-welcome">
                 <div className="chatbot-welcome-icon">
                   <img
-                    src="/assets/black.png"
+                    src="/assets/Copy of P Logo for dark background (1).png"
                     alt="THINK Logo"
                     className="chatbot-welcome-logo"
                   />
@@ -429,7 +429,7 @@ const Chatbot = () => {
                   {msg.role === 'assistant' && (
                     <div className="chatbot-message-avatar">
                       <img
-                        src="/assets/black.png"
+                        src="/assets/Copy of P Logo for dark background (1).png"
                         alt="THINK"
                         className="chatbot-avatar-img"
                       />
@@ -453,7 +453,7 @@ const Chatbot = () => {
               <div className="chatbot-message assistant">
                 <div className="chatbot-message-avatar">
                   <img
-                    src="/assets/black.png"
+                    src="/assets/Copy of P Logo for dark background (1).png"
                     alt="THINK"
                     className="chatbot-avatar-img"
                   />
