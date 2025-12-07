@@ -47,7 +47,7 @@ Thumbs.db
 *.log
 
 # Environment variables
-# .env  # Commented out to share keys with team
+.env  # Commented out to share keys with team
 .env.local
 
 # Data (uncomment if you want to exclude local data)

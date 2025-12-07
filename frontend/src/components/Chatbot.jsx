@@ -383,9 +383,17 @@ const Chatbot = () => {
               />
               <span>The THINKer</span>
             </div>
-            <button className="chatbot-reset-chat" onClick={handleNewChat} title="Reset conversation">
-              Reset chat
-            </button>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button className="chatbot-reset-chat" onClick={handleNewChat} title="Reset conversation">
+                Reset chat
+              </button>
+              <button className="chatbot-header-close" onClick={() => setIsOpen(false)} title="Close chat">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -420,9 +428,11 @@ const Chatbot = () => {
                 <div className={`chatbot-message ${msg.role}`}>
                   {msg.role === 'assistant' && (
                     <div className="chatbot-message-avatar">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-                      </svg>
+                      <img
+                        src="/assets/Copy of P Logo for dark background (1).png"
+                        alt="THINK"
+                        className="chatbot-avatar-img"
+                      />
                     </div>
                   )}
                   <div className="chatbot-message-content">
@@ -442,9 +452,11 @@ const Chatbot = () => {
             {isLoading && (
               <div className="chatbot-message assistant">
                 <div className="chatbot-message-avatar">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-                  </svg>
+                  <img
+                    src="/assets/Copy of P Logo for dark background (1).png"
+                    alt="THINK"
+                    className="chatbot-avatar-img"
+                  />
                 </div>
                 <div className="chatbot-message-content">
                   <div className="chatbot-typing">
