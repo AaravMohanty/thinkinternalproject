@@ -66,6 +66,111 @@ ALUMNI_CSV = os.path.join(os.path.dirname(__file__), "..", "gdrive_alumni.csv")
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "cached_images")
 Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
 
+
+# ============================================================================
+# EMBEDDING HELPER FUNCTIONS
+# For adding new users to alumni_embeddings so they appear in searches
+# ============================================================================
+
+def user_id_to_embedding_id(user_id: str) -> int:
+    """Convert user_id to a unique negative csv_row_id for alumni_embeddings.
+    Uses negative numbers to distinguish from CSV row indices (which are positive).
+    """
+    # Hash the user_id and convert to a negative integer
+    hash_int = int(hashlib.md5(user_id.encode()).hexdigest()[:8], 16)
+    return -(hash_int + 1)  # Ensure it's negative (add 1 to avoid 0)
+
+
+def create_user_embedding(user_profile: dict, user_id: str) -> bool:
+    """Create an embedding for a new user and add them to alumni_embeddings.
+
+    Args:
+        user_profile: The user's profile data
+        user_id: The user's auth user_id
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        import google.generativeai as genai
+        from config import GEMINI_API_KEY, EMBEDDING_MODEL
+
+        # Build profile text for embedding
+        parts = []
+        name = user_profile.get('full_name', '')
+        if name:
+            parts.append(f"Name: {name}")
+        if user_profile.get('current_title'):
+            parts.append(f"Current Role: {user_profile['current_title']}")
+        if user_profile.get('current_company'):
+            parts.append(f"Company: {user_profile['current_company']}")
+        if user_profile.get('major'):
+            parts.append(f"Major: {user_profile['major']}")
+        if user_profile.get('bio'):
+            parts.append(f"Bio: {user_profile['bio']}")
+        if user_profile.get('career_interests'):
+            interests = user_profile['career_interests']
+            if isinstance(interests, list):
+                parts.append(f"Interests: {', '.join(interests)}")
+        if user_profile.get('location'):
+            parts.append(f"Location: {user_profile['location']}")
+
+        profile_text = '\n'.join(parts) if parts else f"Alumni: {name}"
+
+        # Generate embedding
+        genai.configure(api_key=GEMINI_API_KEY)
+        result = genai.embed_content(
+            model=EMBEDDING_MODEL,
+            content=profile_text,
+            task_type="retrieval_document"
+        )
+        embedding = result['embedding']
+
+        # Generate unique ID for this user
+        embedding_id = user_id_to_embedding_id(user_id)
+
+        # Store in alumni_embeddings (upsert to handle updates)
+        supabase_admin.table('alumni_embeddings').upsert({
+            'csv_row_id': embedding_id,
+            'name': name,
+            'embedding': embedding,
+            'profile_text': f"USER_ID:{user_id}\n{profile_text[:900]}",  # Store user_id for lookup
+            'updated_at': 'now()'
+        }, on_conflict='csv_row_id').execute()
+
+        print(f"✓ Created embedding for user {user_id} (embedding_id: {embedding_id})")
+        return True
+
+    except Exception as e:
+        print(f"Warning: Failed to create embedding for user {user_id}: {e}")
+        return False
+
+
+def delete_user_embedding(user_id: str, csv_source_id: int = None) -> bool:
+    """Delete a user's embedding from alumni_embeddings.
+
+    Args:
+        user_id: The user's auth user_id
+        csv_source_id: If linked to CSV, the csv_row_id
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # If linked to CSV, don't delete (it's CSV data, not user-created)
+        # Just delete the user-created embedding if any
+        embedding_id = user_id_to_embedding_id(user_id)
+
+        # Try to delete the user's own embedding
+        supabase_admin.table('alumni_embeddings').delete().eq('csv_row_id', embedding_id).execute()
+        print(f"✓ Deleted embedding for user {user_id} (embedding_id: {embedding_id})")
+
+        return True
+
+    except Exception as e:
+        print(f"Warning: Failed to delete embedding for user {user_id}: {e}")
+        return False
+
 # Seed data
 SEED = [
     {
@@ -1497,6 +1602,7 @@ if AUTH_ENABLED:
                 return jsonify({'error': 'No valid fields to update'}), 400
 
             # If completing onboarding, try to match with CSV alumni data
+            csv_matched = False
             if data.get('onboarding_completed') == True:
                 try:
                     from services.alumni_matcher import AlumniMatcher
@@ -1521,9 +1627,19 @@ if AUTH_ENABLED:
                             if linking_data:
                                 # Add CSV linking fields to update
                                 update_data.update(linking_data)
+                                csv_matched = True
                                 print(f"✓ Linked user {current_user['user_id']} to CSV record #{linking_data.get('csv_source_id')} ({match_result.get('match_type')})")
                             else:
-                                print(f"⊙ No CSV match for user {current_user['user_id']} - will create new card")
+                                print(f"⊙ No CSV match for user {current_user['user_id']} - creating new embedding")
+                        else:
+                            print(f"⊙ No CSV match for user {current_user['user_id']} - creating new embedding")
+
+                        # If no CSV match, create an embedding for this new user
+                        # so they appear in searches and recommendations
+                        if not csv_matched:
+                            merged_profile = {**current_profile, **update_data}
+                            create_user_embedding(merged_profile, current_user['user_id'])
+
                 except Exception as match_error:
                     # Don't fail the update if matching fails
                     print(f"Warning: CSV matching failed: {match_error}")
@@ -1646,7 +1762,14 @@ if AUTH_ENABLED:
             except Exception as e:
                 print(f"Warning: Could not delete profile: {e}")
 
-            # 6. If user was linked to a CSV entry, mark it as deleted
+            # 6. Delete user's embedding from alumni_embeddings
+            # (for users who weren't linked to CSV and had their own embedding)
+            try:
+                delete_user_embedding(user_id, csv_source_id)
+            except Exception as e:
+                print(f"Warning: Could not delete embedding: {e}")
+
+            # 7. If user was linked to a CSV entry, mark it as deleted
             if csv_source_id is not None:
                 try:
                     supabase_admin.table('deleted_alumni').insert({
@@ -1793,6 +1916,7 @@ if AUTH_ENABLED:
         - Chat sessions and messages (via CASCADE)
         - Connection records (via CASCADE)
         - Auth user account
+        - Search embeddings from alumni_embeddings
         """
         try:
             # Get member info before deletion for logging
@@ -1906,6 +2030,14 @@ if AUTH_ENABLED:
                     print(f"Marked CSV row {csv_source_id} as deleted")
                 except Exception as del_error:
                     print(f"Warning: Could not mark CSV as deleted: {del_error}")
+
+            # 10. Delete user's embedding from alumni_embeddings
+            try:
+                if delete_user_embedding(user_id, csv_source_id):
+                    deleted_items.append("search embedding")
+                    print(f"Deleted embedding for user {user_id}")
+            except Exception as embed_error:
+                print(f"Warning: Could not delete embedding: {embed_error}")
 
             # Log the action with details of what was deleted
             log_admin_action(
