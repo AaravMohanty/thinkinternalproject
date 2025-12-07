@@ -2194,29 +2194,19 @@ if AUTH_ENABLED:
                         pass  # If can't parse, include them
                 valid_matches.append(m)
 
-            # Now separate into new (not excluded) and already seen
+            # Separate into new (not yet seen) and already seen
+            # Both lists stay sorted by similarity score (best first from RPC)
             new_matches = [m for m in valid_matches if m['csv_row_id'] not in exclude_ids]
             seen_matches = [m for m in valid_matches if m['csv_row_id'] in exclude_ids]
 
-            # Randomly sample from top matches to add variety
-            import random
-
-            # Take from top 50 new matches (or all if fewer) to maintain quality while adding variety
-            pool_size = min(50, len(new_matches))
-            if pool_size > count:
-                # Randomly sample from the top pool
-                selected_matches = random.sample(new_matches[:pool_size], count)
-            else:
-                selected_matches = new_matches[:count]
+            # Always return the TOP best matches that haven't been seen yet
+            # Frontend auto-clears exclude_ids at 80 to cycle back to best matches
+            selected_matches = new_matches[:count]
 
             if len(selected_matches) < count:
-                # Need to reuse some - randomly sample from seen matches
+                # Not enough unseen matches - fill with top seen matches
                 needed = count - len(selected_matches)
-                seen_pool = min(30, len(seen_matches))
-                if seen_pool > needed:
-                    selected_matches.extend(random.sample(seen_matches[:seen_pool], needed))
-                else:
-                    selected_matches.extend(seen_matches[:needed])
+                selected_matches.extend(seen_matches[:needed])
 
             matched_csv_ids = [m['csv_row_id'] for m in selected_matches]
 

@@ -71,16 +71,31 @@ const HomePage = () => {
     }
   }, [user]);
 
-  const loadRecommendations = async (newExcludeIds = []) => {
+  const MAX_EXCLUDED_IDS = 80; // Auto-reset after seeing this many people
+
+  const loadRecommendations = async (currentExcludeIds = []) => {
     try {
       setLoadingRecs(true);
       setRecsMessage('');
-      const data = await alumniAPI.getRecommendations(newExcludeIds, 8);
+
+      // Auto-clear if we've seen too many - ensures we never run out
+      let excludeIdsToUse = currentExcludeIds;
+      if (currentExcludeIds.length >= MAX_EXCLUDED_IDS) {
+        excludeIdsToUse = [];
+        setExcludedIds([]);
+        localStorage.removeItem('excludedRecIds');
+      }
+
+      const data = await alumniAPI.getRecommendations(excludeIdsToUse, 8);
       if (data.success) {
         if (data.recommendations && data.recommendations.length > 0) {
           setRecommendations(data.recommendations);
-          const newIds = data.recommendations.map(r => r.csv_row_id);
-          setExcludedIds(prev => [...new Set([...prev, ...newIds])]);
+          const newIds = data.recommendations.map(r => r.csv_row_id).filter(id => id != null);
+          setExcludedIds(prev => {
+            const updated = [...new Set([...prev, ...newIds])];
+            // Double-check: if somehow we exceed, reset
+            return updated.length >= MAX_EXCLUDED_IDS ? newIds : updated;
+          });
         } else {
           setRecommendations([]);
           setRecsMessage(data.message || 'No recommendations available');
